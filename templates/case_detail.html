@@ -1,0 +1,1913 @@
+{% extends "base.html" %}
+{% block title %}案件详情 - 个人案件管理系统{% endblock %}
+{% block extra_css %}
+<style>
+.drop-zone {
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #fafafa;
+}
+.drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: #f0f7ff;
+}
+.drop-zone i { font-size: 40px; color: #adb5bd; }
+.doc-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+.doc-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.doc-thumb {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: #f0f0f0;
+}
+.doc-thumb-pdf {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    border-radius: 6px;
+    color: white;
+}
+.doc-thumb-doc {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4285f4 0%, #2b5ead 100%);
+    border-radius: 6px;
+    color: white;
+}
+.doc-thumb-xls {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f9d58 0%, #0b7a45 100%);
+    border-radius: 6px;
+    color: white;
+}
+.doc-thumb-ppt {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #db4437 0%, #a82e23 100%);
+    border-radius: 6px;
+    color: white;
+}
+.doc-thumb-other {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #6c757d, #495057);
+    border-radius: 6px;
+    color: white;
+}
+.doc-thumb-video {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e91e63, #c2185b);
+    border-radius: 6px;
+    color: white;
+}
+.doc-thumb-pdf i, .doc-thumb-doc i, .doc-thumb-xls i, .doc-thumb-ppt i, .doc-thumb-other i, .doc-thumb-video i { font-size: 48px; }
+.doc-actions .btn { padding: 2px 8px; font-size: 12px; }
+.view-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.doc-card:hover .view-overlay { opacity: 1; }
+.view-overlay i { font-size: 32px; color: white; }
+
+/* 文件预览弹窗 */
+.file-preview-modal .modal-body {
+    padding: 0;
+    max-height: 80vh;
+    overflow: auto;
+}
+.file-preview-modal .modal-body img {
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+}
+.file-preview-modal .modal-body iframe {
+    width: 100%;
+    height: 75vh;
+    border: none;
+}
+.file-preview-modal .modal-footer {
+    background: #f8f9fa;
+}
+
+/* 文档分类筛选 */
+.doc-filter-bar .btn { font-size: 13px; padding: 4px 12px; border-radius: 20px; }
+.doc-filter-bar .btn.active { font-weight: 600; }
+
+/* Word 文档预览样式 */
+.docx-preview {
+    padding: 20px 30px;
+    max-height: 75vh;
+    overflow-y: auto;
+    line-height: 1.8;
+    color: #333;
+}
+.docx-preview h1 { font-size: 24px; font-weight: 700; margin: 20px 0 10px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+.docx-preview h2 { font-size: 20px; font-weight: 600; margin: 16px 0 8px; }
+.docx-preview h3 { font-size: 17px; font-weight: 600; margin: 12px 0 6px; }
+.docx-preview p { margin: 6px 0; text-indent: 0; }
+.docx-preview table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+.docx-preview table td, .docx-preview table th { border: 1px solid #ccc; padding: 6px 10px; font-size: 13px; }
+.docx-preview table th { background: #f5f5f5; font-weight: 600; }
+.docx-preview img { max-width: 100%; height: auto; }
+
+/* Excel 表格预览样式 */
+.excel-table-wrapper {
+    max-height: 70vh;
+    overflow: auto;
+    padding: 10px;
+}
+.excel-table-wrapper table {
+    border-collapse: collapse;
+    font-size: 13px;
+    width: max-content;
+    min-width: 100%;
+}
+.excel-table-wrapper td, .excel-table-wrapper th {
+    border: 1px solid #dee2e6;
+    padding: 4px 10px;
+    white-space: nowrap;
+    min-width: 60px;
+}
+.excel-table-wrapper th {
+    background: #f0f2f5;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.excel-table-wrapper tr:first-child td {
+    background: #f0f2f5;
+    font-weight: 600;
+}
+.excel-table-wrapper td:hover {
+    background: #e8f4fd;
+}
+
+/* 通用文档上传区域 */
+.general-upload-zone {
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 25px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #fafafa;
+    position: relative;
+}
+.general-upload-zone:hover, .general-upload-zone.dragover {
+    border-color: var(--accent);
+    background: #f0f7ff;
+}
+/* 上传选择按钮 */
+.upload-choice-btn {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px 24px; border-radius: 10px; cursor: pointer;
+    transition: all 0.2s; min-width: 120px;
+}
+.upload-choice-btn:hover { background: #e8f0fe; transform: translateY(-1px); }
+.upload-choice-btn i { font-size: 28px; }
+.general-upload-zone i { font-size: 36px; color: #adb5bd; }
+
+/* 文档列表 - 列表视图 */
+.file-folder-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+.file-folder-header:hover {
+    background: #e9ecef;
+}
+/* 文件夹二级导航 */
+.file-nav-bar {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+}
+.file-nav-bar .nav-back {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 6px;
+    color: #0d6efd; cursor: pointer; font-size: 13px;
+    background: #f0f7ff; border: 1px solid #cfe2ff;
+    transition: all 0.15s;
+}
+.file-nav-bar .nav-back:hover { background: #cfe2ff; }
+.file-nav-bar .nav-path {
+    margin-left: 10px; font-size: 13px; color: #6c757d;
+}
+.file-nav-bar .nav-path i { color: #ffc107; }
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+    transition: background 0.15s;
+}
+.file-item:hover { background: #f8f9fa; }
+.file-item:last-child { border-bottom: none; }
+.file-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.file-icon i { font-size: 20px; color: white; }
+.file-icon-pdf { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+.file-icon-doc { background: linear-gradient(135deg, #4285f4, #2b5ead); }
+.file-icon-xls { background: linear-gradient(135deg, #0f9d58, #0b7a45); }
+.file-icon-ppt { background: linear-gradient(135deg, #db4437, #a82e23); }
+.file-icon-img { background: linear-gradient(135deg, #9b59b6, #7d3c98); }
+.file-icon-video { background: linear-gradient(135deg, #e91e63, #c2185b); }
+.file-icon-other { background: linear-gradient(135deg, #6c757d, #495057); }
+
+/* Tab 紧贴样式 */
+#detailTabs {
+    background: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+    padding: 4px 4px 0 4px;
+    border-bottom: 1px solid #dee2e6;
+}
+#detailTabs .nav-link {
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    color: #6c757d;
+    font-weight: 500;
+    padding: 10px 18px;
+    transition: all 0.2s;
+    margin-right: 2px;
+    background: transparent;
+}
+#detailTabs .nav-link:hover {
+    color: var(--accent);
+    background: #e9ecef;
+    border-radius: 8px 8px 0 0;
+}
+#detailTabs .nav-link.active {
+    color: var(--accent);
+    background: #fff;
+    border-color: #dee2e6;
+    border-bottom-color: #fff;
+    margin-bottom: -1px;
+    font-weight: 600;
+    position: relative;
+    z-index: 2;
+}
+#detailTabContent {
+    padding: 0;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    background: #fff;
+}
+#detailTabContent .tab-pane {
+    padding: 0;
+}
+#detailTabContent > .tab-pane > .card {
+    box-shadow: none;
+    border-radius: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-folder2-open"></i> <span id="case-title">案件详情</span></h2>
+    <div>
+        <button class="btn btn-outline-secondary" onclick="location.href='/cases'"><i class="bi bi-arrow-left"></i> 返回列表</button>
+    </div>
+</div>
+
+<!-- 基本信息 -->
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 id="case-name-display" class="mb-1"></h5>
+                <small class="text-muted" id="case-number-display"></small>
+            </div>
+            <div>
+                <span class="badge-status badge-进行中" id="case-status-badge">进行中</span>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-md-2"><small class="text-muted">案由</small><div id="info-type"></div></div>
+            <div class="col-md-2"><small class="text-muted">受理法院</small><div id="info-court"></div></div>
+            <div class="col-md-2"><small class="text-muted">客户</small><div id="info-client"></div></div>
+            <div class="col-md-3"><small class="text-muted">客户联系方式</small><div id="info-client-contact"></div></div>
+            <div class="col-md-3"><small class="text-muted">法官</small><div id="info-judge"></div></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-3"><small class="text-muted">对方当事人</small><div id="info-opposing"></div></div>
+            <div class="col-md-3"><small class="text-muted">对方律师</small><div id="info-opposing-counsel"></div></div>
+            <div class="col-md-3"><small class="text-muted">诉求金额</small><div id="info-claim"></div></div>
+            <div class="col-md-3"><small class="text-muted">律师费</small><div id="info-fee"></div></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-3"><small class="text-muted">收费状态</small><div id="info-fee-status"></div></div>
+            <div class="col-md-3"><small class="text-muted">立案日期</small><div id="info-create-date"></div></div>
+            <div class="col-md-6"><small class="text-muted">案件描述</small><div id="info-desc"></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 切换 -->
+<ul class="nav nav-tabs mb-0" id="detailTabs">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#timeline"><i class="bi bi-clock-history"></i> 时间线</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#workrecords"><i class="bi bi-pencil-square"></i> 工作记录</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#todos"><i class="bi bi-check2-square"></i> 待办事项</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#documents"><i class="bi bi-file-earmark-text"></i> 文档</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#summons"><i class="bi bi-file-earmark-image"></i> 传票</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#followups"><i class="bi bi-chat-dots"></i> 跟进记录</a></li>
+</ul>
+
+<div class="tab-content" id="detailTabContent">
+
+    <!-- 时间线 -->
+    <div class="tab-pane fade show active" id="timeline">
+        <div class="card border-0 rounded-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">案件时间线</h6>
+                    <button class="btn btn-sm btn-accent" onclick="showTimelineForm()"><i class="bi bi-plus"></i> 添加事件</button>
+                </div>
+                <div id="timeline-container"></div>
+                <div id="timeline-form" style="display:none" class="border rounded p-3 mt-3 bg-light">
+                    <h6 id="timeline-form-title" class="mb-2">添加时间线事件</h6>
+                    <input type="hidden" id="tl-edit-id" value="">
+                    <div class="row g-2">
+                        <div class="col-md-3"><label class="form-label form-label-sm">日期</label><input type="date" class="form-control form-control-sm" id="tl-date"></div>
+                        <div class="col-md-3">
+                            <label class="form-label form-label-sm">类型</label>
+                            <select class="form-select form-select-sm" id="tl-type">
+                                <option value="立案">立案</option>
+                                <option value="开庭">开庭</option>
+                                <option value="判决">判决</option>
+                                <option value="调解">调解</option>
+                                <option value="执行">执行</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3"><label class="form-label form-label-sm">标题</label><input type="text" class="form-control form-control-sm" id="tl-title" placeholder="事件标题"></div>
+                        <div class="col-md-3">
+                            <label class="form-label form-label-sm">描述</label>
+                            <input type="text" class="form-control form-control-sm" id="tl-desc" placeholder="事件描述">
+                        </div>
+                        <div class="col-12 text-end mt-2">
+                            <button class="btn btn-sm btn-secondary" onclick="cancelTimelineForm()">取消</button>
+                            <button class="btn btn-sm btn-accent" id="tl-save-btn" onclick="saveTimelineEvent()">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工作记录 -->
+    <div class="tab-pane fade" id="workrecords">
+        <div class="card border-0 rounded-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-pencil-square"></i> 工作记录</h6>
+                    <button class="btn btn-sm btn-accent" onclick="showWorkForm()"><i class="bi bi-plus"></i> 添加记录</button>
+                </div>
+                <div id="work-records-container"></div>
+                <div id="work-form" style="display:none" class="border rounded p-3 mt-3 bg-light">
+                    <h6 class="mb-2" id="work-form-title">添加工作记录</h6>
+                    <input type="hidden" id="wr-edit-id" value="">
+                    <div class="row g-2">
+                        <div class="col-md-3"><label class="form-label form-label-sm">日期</label><input type="date" class="form-control form-control-sm" id="wr-date"></div>
+                        <div class="col-md-3">
+                            <label class="form-label form-label-sm">类别</label>
+                            <select class="form-select form-select-sm" id="wr-category">
+                                <option value="出庭">出庭</option>
+                                <option value="阅卷">阅卷</option>
+                                <option value="起草">起草</option>
+                                <option value="沟通">沟通</option>
+                                <option value="调研">调研</option>
+                                <option value="取证">取证</option>
+                                <option value="谈判">谈判</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4"><label class="form-label form-label-sm">工作内容</label><input type="text" class="form-control form-control-sm" id="wr-content" placeholder="详细描述工作内容"></div>
+                        <div class="col-md-2"><label class="form-label form-label-sm">工时(小时)</label><input type="number" class="form-control form-control-sm" id="wr-hours" placeholder="0.5" step="0.5" min="0"></div>
+                        <div class="col-12 text-end mt-2">
+                            <button class="btn btn-sm btn-secondary" onclick="cancelWorkForm()">取消</button>
+                            <button class="btn btn-sm btn-accent" id="wr-save-btn" onclick="saveWorkRecord()">保存</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="work-stats" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 待办事项 -->
+    <div class="tab-pane fade" id="todos">
+        <div class="card border-0 rounded-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-check2-square"></i> 待办事项</h6>
+                    <button class="btn btn-sm btn-accent" onclick="showTodoForm()"><i class="bi bi-plus"></i> 添加待办</button>
+                </div>
+                <div id="todo-container"></div>
+                <div id="todo-form" style="display:none" class="border rounded p-3 mt-3 bg-light">
+                    <h6 class="mb-2" id="todo-form-title">添加待办事项</h6>
+                    <input type="hidden" id="todo-edit-id" value="">
+                    <div class="row g-2">
+                        <div class="col-md-4"><label class="form-label form-label-sm">标题</label><input type="text" class="form-control form-control-sm" id="todo-title" placeholder="待办标题"></div>
+                        <div class="col-md-2"><label class="form-label form-label-sm">截止日期</label><input type="date" class="form-control form-control-sm" id="todo-deadline"></div>
+                        <div class="col-md-2">
+                            <label class="form-label form-label-sm">优先级</label>
+                            <select class="form-select form-select-sm" id="todo-priority">
+                                <option value="普通">普通</option>
+                                <option value="重要">重要</option>
+                                <option value="紧急">紧急</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3"><label class="form-label form-label-sm">描述</label><input type="text" class="form-control form-control-sm" id="todo-desc" placeholder="描述"></div>
+                        <div class="col-12 text-end mt-2">
+                            <button class="btn btn-sm btn-secondary" onclick="cancelTodoForm()">取消</button>
+                            <button class="btn btn-sm btn-accent" id="todo-save-btn" onclick="saveTodo()">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文档管理 -->
+    <div class="tab-pane fade" id="documents">
+        <div class="card border-0 rounded-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> 案件文档</h6>
+                    <div class="d-flex gap-2">
+                        <div class="btn-group btn-group-sm" id="doc-view-toggle">
+                            <button class="btn btn-outline-secondary" onclick="setDocView('grid')" title="网格视图"><i class="bi bi-grid-3x3-gap"></i></button>
+                            <button class="btn btn-outline-secondary active" onclick="setDocView('list')" title="列表视图"><i class="bi bi-list-ul"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分类筛选 -->
+                <div class="doc-filter-bar mb-3">
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button class="btn btn-sm btn-outline-primary active" onclick="filterDocs('all', this)">全部</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="filterDocs('pdf', this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="filterDocs('doc', this)"><i class="bi bi-file-earmark-word"></i> Word</button>
+                        <button class="btn btn-sm btn-outline-success" onclick="filterDocs('xls', this)"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="filterDocs('ppt', this)"><i class="bi bi-file-earmark-ppt"></i> PPT</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="filterDocs('img', this)"><i class="bi bi-file-earmark-image"></i> 图片</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="filterDocs('video', this)"><i class="bi bi-file-earmark-play"></i> 视频</button>
+                        <button class="btn btn-sm btn-outline-dark" onclick="filterDocs('other', this)"><i class="bi bi-file-earmark"></i> 其他</button>
+                    </div>
+                </div>
+
+                <!-- 上传区域 -->
+                <div class="general-upload-zone" id="general-upload-zone">
+                    <div id="upload-default-view">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                        <p class="mt-2 mb-1"><strong>点击上传文件或文件夹</strong></p>
+                        <small class="text-muted">支持 Word、PDF、Excel、PPT、图片、视频、压缩包等格式</small>
+                    </div>
+                    <div id="upload-choices-view" style="display:none;">
+                        <div class="d-flex gap-3 justify-content-center">
+                            <div class="upload-choice-btn" onclick="document.getElementById('general-file-input').click()">
+                                <i class="bi bi-file-earmark text-primary"></i>
+                                <div class="mt-1"><strong>选择文件</strong></div>
+                                <small class="text-muted">可多选文件</small>
+                            </div>
+                            <div class="upload-choice-btn" onclick="document.getElementById('general-folder-input').click()">
+                                <i class="bi bi-folder2-open text-warning"></i>
+                                <div class="mt-1"><strong>选择文件夹</strong></div>
+                                <small class="text-muted">上传整个文件夹</small>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="file" id="general-file-input" style="display:none"
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.zip,.rar,.7z,.mp4,.avi,.mov,.mkv,.wmv,.flv,.webm,.m4v,.3gp"
+                           multiple onchange="handleGeneralUpload(this)">
+                    <input type="file" id="general-folder-input" style="display:none"
+                           webkitdirectory directory multiple onchange="handleGeneralUpload(this)">
+                </div>
+
+                <!-- 上传进度 -->
+                <div id="general-upload-progress" style="display:none" class="mt-3">
+                    <div class="d-flex align-items-center mb-1">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                        <span id="general-upload-status">正在上传...</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div id="general-upload-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- 文档列表 - 网格视图 -->
+                <div id="docs-grid-view" class="mt-3" style="display:none">
+                    <div id="docs-grid-list" class="row g-3">
+                        <p class="text-muted text-center">暂无上传文档</p>
+                    </div>
+                </div>
+
+                <!-- 文档列表 - 列表视图 -->
+                <div id="docs-list-view" class="mt-3">
+                    <div id="docs-list-container" class="border rounded">
+                        <p class="text-muted text-center p-3 mb-0">暂无上传文档</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 传票 -->
+    <div class="tab-pane fade" id="summons">
+        <div class="card border-0 rounded-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-image"></i> 传票管理</h6>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleSummonsInfoForm()" id="btn-toggle-summons-info">
+                            <i class="bi bi-pencil"></i> 手动填写
+                        </button>
+                        <button class="btn btn-sm btn-accent" onclick="document.getElementById('summons-file-input').click()">
+                            <i class="bi bi-upload"></i> 上传传票
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="summons-file-input" style="display:none"
+                       accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp"
+                       onchange="handleSummonsUpload(this)">
+
+                <!-- 传票手动填写表单 -->
+                <div id="summons-info-form" style="display:none;" class="card bg-light mb-3 border">
+                    <div class="card-body p-3">
+                        <form id="summonsInfoForm" onsubmit="saveSummonsInfo(event)">
+                            <input type="hidden" id="summons-doc-id" value="">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">开庭日期</label>
+                                    <input type="date" class="form-control form-control-sm" id="summons-hearing-date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">开庭时间</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-hearing-time" placeholder="如 09:30">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">案号</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-case-number" placeholder="(2026)X...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">开庭法院</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-court" placeholder="XX人民法院">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">开庭地点</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-location" placeholder="第X法庭">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">审判员/法官</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-judge">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">书记员</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-clerk">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">联系电话</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-contact-phone">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">案由</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-case-cause">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">传唤事由</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-cause">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">被传唤人</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-party">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">传唤地址</label>
+                                    <input type="text" class="form-control form-control-sm" id="summons-address">
+                                </div>
+                            </div>
+                            <div class="mt-2 d-flex gap-2">
+                                <button type="submit" class="btn btn-sm btn-accent"><i class="bi bi-check-lg"></i> 保存传票信息</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSummonsInfoForm()">取消</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 传票列表 -->
+                <div id="summons-list-container" class="border rounded">
+                    <p class="text-muted text-center p-3 mb-0">暂无传票</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 跟进记录 -->
+    <div class="tab-pane fade" id="followups">
+        <div class="card border-0 rounded-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-chat-dots"></i> 跟进记录</h6>
+                    <button class="btn btn-sm btn-accent" onclick="showFollowupForm()"><i class="bi bi-plus"></i> 添加跟进</button>
+                </div>
+                <div id="followup-container"></div>
+                <div id="followup-form" style="display:none" class="border rounded p-3 mt-3 bg-light">
+                    <h6 class="mb-2" id="followup-form-title">添加跟进记录</h6>
+                    <input type="hidden" id="fu-edit-id" value="">
+                    <div class="row g-2">
+                        <div class="col-md-2"><label class="form-label form-label-sm">日期</label><input type="date" class="form-control form-control-sm" id="fu-date"></div>
+                        <div class="col-md-4"><label class="form-label form-label-sm">跟进内容</label><input type="text" class="form-control form-control-sm" id="fu-content" placeholder="跟进内容"></div>
+                        <div class="col-md-3"><label class="form-label form-label-sm">联系人</label><input type="text" class="form-control form-control-sm" id="fu-contact-person" placeholder="联系人"></div>
+                        <div class="col-md-3"><label class="form-label form-label-sm">联系电话</label><input type="text" class="form-control form-control-sm" id="fu-contact-phone" placeholder="联系电话"></div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-md-6"><label class="form-label form-label-sm">跟进结果</label><input type="text" class="form-control form-control-sm" id="fu-result" placeholder="跟进结果"></div>
+                        <div class="col-md-6"><label class="form-label form-label-sm">下一步行动</label><input type="text" class="form-control form-control-sm" id="fu-next" placeholder="下一步行动"></div>
+                        <div class="col-12 text-end mt-2">
+                            <button class="btn btn-sm btn-secondary" onclick="cancelFollowupForm()">取消</button>
+                            <button class="btn btn-sm btn-accent" id="fu-save-btn" onclick="saveFollowup()">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 文件预览大图弹窗（支持图片和PDF） -->
+<div class="modal fade file-preview-modal" id="filePreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="file-preview-title">文件预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="file-preview-body">
+                <!-- 图片或PDF iframe 将动态插入 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" onclick="downloadFile(currentPreviewDocId)"><i class="bi bi-download"></i> 下载文件</button>
+                <button class="btn btn-outline-primary" onclick="openInNewTab()"><i class="bi bi-box-arrow-up-right"></i> 新窗口打开</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const caseId = {{ case_id }};
+let currentDocId = null;
+let currentPreviewDocId = null;
+let currentPreviewExt = null;
+let currentDocView = 'list'; // grid or list
+let currentDocFilter = 'all';
+let cachedGeneralDocs = [];
+let _listGrouped = {};      // 按文件夹分组的文档数据
+let _listFolderOrder = [];  // 文件夹顺序
+let _currentListFolder = null;  // 当前导航状态：null=根目录, 字符串=文件夹路径
+
+// ===================== 通用文档管理 =====================
+
+// 文件类型工具函数
+function getFileCategory(fileName) {
+    const ext = fileName.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (['doc', 'docx'].includes(ext)) return 'doc';
+    if (['xls', 'xlsx'].includes(ext)) return 'xls';
+    if (['ppt', 'pptx'].includes(ext)) return 'ppt';
+    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext)) return 'img';
+    if (['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'm4v', '3gp'].includes(ext)) return 'video';
+    return 'other';
+}
+
+function getFileCategoryLabel(cat) {
+    const labels = { pdf: 'PDF', doc: 'Word', xls: 'Excel', ppt: 'PPT', img: '图片', video: '视频', other: '其他' };
+    return labels[cat] || '其他';
+}
+
+function getFileCategoryIcon(cat) {
+    const icons = { pdf: 'bi-file-earmark-pdf', doc: 'bi-file-earmark-word', xls: 'bi-file-earmark-excel', ppt: 'bi-file-earmark-ppt', img: 'bi-file-earmark-image', video: 'bi-file-earmark-play', other: 'bi-file-earmark' };
+    return icons[cat] || 'bi-file-earmark';
+}
+
+function getThumbClass(cat) {
+    const classes = { pdf: 'doc-thumb-pdf', doc: 'doc-thumb-doc', xls: 'doc-thumb-xls', ppt: 'doc-thumb-ppt', img: '', video: 'doc-thumb-video', other: 'doc-thumb-other' };
+    return classes[cat] || 'doc-thumb-other';
+}
+
+function getIconClass(cat) {
+    const classes = { pdf: 'file-icon-pdf', doc: 'file-icon-doc', xls: 'file-icon-xls', ppt: 'file-icon-ppt', img: 'file-icon-img', video: 'file-icon-video', other: 'file-icon-other' };
+    return classes[cat] || 'file-icon-other';
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return '';
+    return bytes > 1024*1024 ? (bytes/1024/1024).toFixed(1)+'MB' : (bytes/1024).toFixed(0)+'KB';
+}
+
+// 上传区域点击切换
+document.getElementById('general-upload-zone').addEventListener('click', function(e) {
+    // 如果点击的是choice按钮内部的元素，不切换（让按钮自己的onclick生效）
+    if (e.target.closest('.upload-choice-btn')) return;
+    const defaultView = document.getElementById('upload-default-view');
+    const choicesView = document.getElementById('upload-choices-view');
+    if (choicesView.style.display === 'none') {
+        defaultView.style.display = 'none';
+        choicesView.style.display = 'block';
+    } else {
+        defaultView.style.display = 'block';
+        choicesView.style.display = 'none';
+    }
+});
+
+// 通用文档拖拽上传
+const generalUploadZone = document.getElementById('general-upload-zone');
+generalUploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    generalUploadZone.classList.add('dragover');
+});
+generalUploadZone.addEventListener('dragleave', () => {
+    generalUploadZone.classList.remove('dragover');
+});
+generalUploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    generalUploadZone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        uploadGeneralFiles(files);
+    }
+});
+
+function handleGeneralUpload(input) {
+    if (input.files.length > 0) {
+        uploadGeneralFiles(input.files);
+    }
+    input.value = '';
+}
+
+async function uploadGeneralFiles(files) {
+    const progressEl = document.getElementById('general-upload-progress');
+    const statusEl = document.getElementById('general-upload-status');
+    const barEl = document.getElementById('general-upload-bar');
+    progressEl.style.display = 'block';
+    barEl.style.width = '0%';
+
+    const total = files.length;
+    let completed = 0;
+    let successCount = 0;
+    let failCount = 0;
+
+    // 并行上传，最多同时3个
+    const CONCURRENCY = 3;
+    const fileArray = Array.from(files);
+
+    async function uploadOne(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('doc_type', '文档');
+        formData.append('category', getFileCategory(file.name));
+        // 文件夹上传时传递文件夹路径（去掉文件名）
+        if (file.webkitRelativePath) {
+            const parts = file.webkitRelativePath.split('/');
+            if (parts.length > 1) {
+                formData.append('folder_path', parts.slice(0, -1).join('/'));
+            }
+        }
+
+        try {
+            const res = await axios.post(`/api/cases/${caseId}/documents/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            completed++;
+            barEl.style.width = Math.round(completed / total * 100) + '%';
+            statusEl.textContent = `已上传 ${completed}/${total} · ${file.name}`;
+            if (res.data.success) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        } catch(e) {
+            completed++;
+            barEl.style.width = Math.round(completed / total * 100) + '%';
+            statusEl.textContent = `已上传 ${completed}/${total} · ${file.name} 失败`;
+            failCount++;
+        }
+    }
+
+    // 分批并行执行
+    for (let i = 0; i < fileArray.length; i += CONCURRENCY) {
+        const batch = fileArray.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map(f => uploadOne(f)));
+    }
+
+    progressEl.style.display = 'none';
+    if (successCount > 0) {
+        loadGeneralDocuments();
+    }
+    if (failCount > 0) {
+        alert(`${failCount}个文件上传失败`);
+    }
+}
+
+// 视图切换
+function setDocView(view) {
+    currentDocView = view;
+    const btns = document.querySelectorAll('#doc-view-toggle .btn');
+    btns.forEach(b => b.classList.remove('active'));
+    if (view === 'grid') {
+        document.getElementById('docs-grid-view').style.display = 'block';
+        document.getElementById('docs-list-view').style.display = 'none';
+        btns[0].classList.add('active');
+    } else {
+        document.getElementById('docs-grid-view').style.display = 'none';
+        document.getElementById('docs-list-view').style.display = 'block';
+        btns[1].classList.add('active');
+    }
+    renderGeneralDocs();
+}
+
+// 分类筛选
+function filterDocs(cat, btn) {
+    currentDocFilter = cat;
+    document.querySelectorAll('.doc-filter-bar .btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderGeneralDocs();
+}
+
+// 加载通用文档列表
+async function loadGeneralDocuments() {
+    const res = await axios.get(`/api/cases/${caseId}/documents`, { params: { doc_type: '文档' } });
+    cachedGeneralDocs = res.data;
+    renderGeneralDocs();
+}
+
+function renderGeneralDocs() {
+    let docs = cachedGeneralDocs;
+
+    // 筛选
+    if (currentDocFilter !== 'all') {
+        docs = docs.filter(d => getFileCategory(d.file_name) === currentDocFilter);
+    }
+
+    // 网格视图
+    const gridEl = document.getElementById('docs-grid-list');
+    // 列表视图
+    const listEl = document.getElementById('docs-list-container');
+
+    if (docs.length === 0) {
+        gridEl.innerHTML = '<div class="col-12"><p class="text-muted text-center">暂无上传文档</p></div>';
+        listEl.innerHTML = '<p class="text-muted text-center p-3 mb-0">暂无上传文档</p>';
+        return;
+    }
+
+    // 网格渲染
+    gridEl.innerHTML = docs.map(d => {
+        const cat = getFileCategory(d.file_name);
+        const isImage = cat === 'img';
+        const thumbClass = getThumbClass(cat);
+        const icon = getFileCategoryIcon(cat);
+
+        return `
+        <div class="col-md-4 col-lg-3">
+            <div class="card doc-card" onclick="openFilePreview(${d.id})">
+                <div class="card-body p-2">
+                    <div style="position:relative">
+                        ${isImage ? `<img src="/api/cases/${caseId}/documents/${d.id}/image" class="doc-thumb" alt="${d.file_name}">` : ''}
+                        ${!isImage ? `<div class="${thumbClass}"><i class="bi ${icon}"></i></div>` : ''}
+                        <div class="view-overlay"><i class="bi bi-arrows-fullscreen"></i></div>
+                    </div>
+                    <div class="mt-2 px-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px;">
+                                <strong style="font-size:13px;" title="${d.file_name}">${d.file_name}</strong>
+                            </div>
+                            <span class="badge bg-light text-dark" style="font-size:10px;">${getFileCategoryLabel(cat)}</span>
+                        </div>
+                        <small class="text-muted">${formatFileSize(d.file_size)}</small>
+                    </div>
+                    <div class="doc-actions d-flex gap-1 mt-2 px-1">
+                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); downloadFile(${d.id})" title="下载"><i class="bi bi-download"></i></button>
+                        <button class="btn btn-sm btn-outline-danger flex-fill" onclick="event.stopPropagation(); deleteDocument(${d.id}, 'general')" title="删除"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    // 列表渲染 - 计算分组数据
+    _listGrouped = {};
+    _listFolderOrder = [];
+    docs.forEach(d => {
+        let folder = d.folder_path || '';
+        // 兼容旧数据：如果folder_path包含文件名，提取纯文件夹路径
+        if (folder && folder.includes('/')) {
+            const lastPart = folder.split('/').pop();
+            if (lastPart.includes('.')) {
+                folder = folder.substring(0, folder.lastIndexOf('/'));
+            }
+        }
+        if (!_listGrouped[folder]) {
+            _listGrouped[folder] = [];
+            _listFolderOrder.push(folder);
+        }
+        _listGrouped[folder].push(d);
+    });
+
+    // 初始渲染列表
+    renderListLevel(_currentListFolder);
+}
+
+// 文件夹二级菜单导航（全局函数，供onclick调用）
+function renderListLevel(targetFolder) {
+    _currentListFolder = targetFolder;
+    const listEl = document.getElementById('docs-list-container');
+    let html = '';
+
+    if (targetFolder) {
+        // 二级菜单 - 文件夹内容 + 返回键
+        const folderDisplayName = targetFolder.includes('/') ? targetFolder.split('/').pop() : targetFolder;
+        html += `
+        <div class="file-nav-bar">
+            <span class="nav-back" onclick="renderListLevel(null)">
+                <i class="bi bi-arrow-left"></i> 返回
+            </span>
+            <span class="nav-path"><i class="bi bi-folder2-open"></i> ${folderDisplayName}</span>
+        </div>`;
+        const items = _listGrouped[targetFolder] || [];
+        if (items.length === 0) {
+            html += '<p class="text-muted text-center p-3 mb-0">该文件夹为空</p>';
+        }
+        items.forEach(d => {
+            html += buildFileItemHtml(d);
+        });
+    } else {
+        // 一级菜单 - 根目录文件 + 文件夹入口
+        const rootDocs = _listGrouped[''] || [];
+        _listFolderOrder.forEach(folder => {
+            if (!folder) return;
+            const items = _listGrouped[folder] || [];
+            const folderDisplayName = folder.includes('/') ? folder.split('/').pop() : folder;
+            const docIds = items.map(d => d.id);
+            html += `
+            <div class="file-folder-header">
+                <div class="flex-grow-1 d-flex align-items-center" onclick="renderListLevel('${folder.replace(/'/g, "\\'")}')">
+                    <i class="bi bi-folder2-open text-warning me-2"></i>
+                    <strong>${folderDisplayName}</strong>
+                    ${folder.includes('/') ? '<small class="text-muted ms-2" style="font-size:11px;">' + folder + '</small>' : ''}
+                    <span class="badge bg-light text-dark ms-2">${items.length} 个文件</span>
+                </div>
+                <div class="d-flex gap-1 flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); downloadFolderFiles([${docIds}], '${folderDisplayName.replace(/'/g, "\\'")}')" title="下载全部"><i class="bi bi-download"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteFolderFiles([${docIds}], '${folderDisplayName.replace(/'/g, "\\'")}')" title="删除全部"><i class="bi bi-trash"></i></button>
+                    <span class="d-flex align-items-center ps-2 border-start" onclick="renderListLevel('${folder.replace(/'/g, "\\'")}')" style="cursor:pointer;">
+                        <i class="bi bi-chevron-right" style="font-size:12px; color:#aaa;"></i>
+                    </span>
+                </div>
+            </div>`;
+        });
+        rootDocs.forEach(d => {
+            html += buildFileItemHtml(d);
+        });
+        if (_listFolderOrder.filter(f => f).length === 0 && rootDocs.length === 0) {
+            html += '<p class="text-muted text-center p-3 mb-0">暂无上传文档</p>';
+        }
+    }
+    listEl.innerHTML = html;
+}
+
+function buildFileItemHtml(d) {
+    const cat = getFileCategory(d.file_name);
+    const icon = getFileCategoryIcon(cat);
+    const iconClass = getIconClass(cat);
+    const createdStr = d.created_at ? d.created_at.slice(0, 16).replace('T', ' ') : '';
+    return `
+    <div class="file-item" onclick="openFilePreview(${d.id})" style="cursor:pointer">
+        <div class="file-icon ${iconClass}"><i class="bi ${icon}"></i></div>
+        <div class="flex-grow-1" style="min-width:0">
+            <div class="d-flex align-items-center">
+                <strong style="font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.file_name}">${d.file_name}</strong>
+                <span class="badge bg-light text-dark ms-2" style="font-size:10px;">${getFileCategoryLabel(cat)}</span>
+            </div>
+            <small class="text-muted">${formatFileSize(d.file_size)} · ${createdStr}</small>
+        </div>
+        <div class="d-flex gap-1 ms-2 flex-shrink-0">
+            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); downloadFile(${d.id})" title="下载"><i class="bi bi-download"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteDocument(${d.id}, 'general')" title="删除"><i class="bi bi-trash"></i></button>
+        </div>
+    </div>`;
+}
+
+async function deleteDocument(docId, type) {
+    if (!confirm('确认删除此文档？文件将从本地永久删除。')) return;
+    try {
+        await axios.delete(`/api/cases/${caseId}/documents/${docId}`);
+    } catch(e) {
+        alert('删除失败：' + (e.response?.data?.message || e.message));
+        return;
+    }
+    if (currentDocId === docId) {
+        currentDocId = null;
+    }
+    // 刷新对应文档列表
+    if (type === 'general') {
+        loadGeneralDocuments();
+    } else if (type === 'summons') {
+        loadSummonsList();
+    }
+    // 联动删除后刷新时间线和待办
+    loadTimeline();
+    loadTodos();
+}
+
+// 下载文件夹内所有文件
+async function downloadFolderFiles(docIds, folderName) {
+    try {
+        const res = await axios.post(`/api/cases/${caseId}/documents/download-folder`, {
+            doc_ids: docIds,
+            folder_name: folderName || '文件夹'
+        }, { responseType: 'blob' });
+        // 创建下载链接
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = (folderName || '文件夹') + '.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    } catch(e) {
+        alert('下载文件夹失败: ' + (e.response?.statusText || e.message));
+    }
+}
+
+// 删除文件夹内所有文件
+async function deleteFolderFiles(docIds, folderName) {
+    if (!confirm(`确认删除文件夹「${folderName}」中的 ${docIds.length} 个文件？文件将从本地永久删除。`)) return;
+    let failCount = 0;
+    for (const id of docIds) {
+        try {
+            await axios.delete(`/api/cases/${caseId}/documents/${id}`);
+        } catch(e) {
+            failCount++;
+        }
+    }
+    if (failCount > 0) {
+        alert(`${failCount} 个文件删除失败`);
+    }
+    loadGeneralDocuments();
+    loadTimeline();
+    loadTodos();
+}
+
+// ===================== 传票管理 =====================
+
+let cachedSummonsDocs = [];
+
+function toggleSummonsInfoForm() {
+    const form = document.getElementById('summons-info-form');
+    if (form.style.display === 'none' || !form.style.display) {
+        form.style.display = 'block';
+        // 如果没有选中文档，创建新表单
+        if (!document.getElementById('summons-doc-id').value) {
+            clearSummonsInfoForm();
+        }
+    } else {
+        form.style.display = 'none';
+        clearSummonsInfoForm();
+    }
+}
+
+function clearSummonsInfoForm() {
+    document.getElementById('summons-doc-id').value = '';
+    document.getElementById('summons-hearing-date').value = '';
+    document.getElementById('summons-hearing-time').value = '';
+    document.getElementById('summons-case-number').value = '';
+    document.getElementById('summons-court').value = '';
+    document.getElementById('summons-location').value = '';
+    document.getElementById('summons-judge').value = '';
+    document.getElementById('summons-clerk').value = '';
+    document.getElementById('summons-contact-phone').value = '';
+    document.getElementById('summons-case-cause').value = '';
+    document.getElementById('summons-cause').value = '';
+    document.getElementById('summons-party').value = '';
+    document.getElementById('summons-address').value = '';
+}
+
+function fillSummonsInfoForm(doc) {
+    document.getElementById('summons-doc-id').value = doc.id;
+    document.getElementById('summons-hearing-date').value = doc.hearing_date || '';
+    document.getElementById('summons-hearing-time').value = doc.hearing_time || '';
+    document.getElementById('summons-case-number').value = doc.hearing_case_number || '';
+    document.getElementById('summons-court').value = doc.hearing_court || '';
+    document.getElementById('summons-location').value = doc.hearing_location || '';
+    document.getElementById('summons-judge').value = doc.hearing_judge || '';
+    document.getElementById('summons-clerk').value = doc.clerk || '';
+    document.getElementById('summons-contact-phone').value = doc.contact_phone || '';
+    document.getElementById('summons-case-cause').value = doc.case_cause || '';
+    document.getElementById('summons-cause').value = doc.summons_cause || '';
+    document.getElementById('summons-party').value = doc.summoned_party || '';
+    document.getElementById('summons-address').value = doc.summoned_address || '';
+}
+
+async function handleSummonsUpload(input) {
+    if (!input.files || input.files.length === 0) return;
+    const files = Array.from(input.files);
+    input.value = '';
+    
+    for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('doc_type', '传票');
+        formData.append('category', 'img');
+        
+        try {
+            const res = await axios.post(`/api/cases/${caseId}/documents/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            if (res.data.success) {
+                loadSummonsList();
+            } else {
+                alert('上传失败: ' + res.data.message);
+            }
+        } catch(e) {
+            alert('上传失败: ' + (e.response?.data?.message || e.message));
+        }
+    }
+}
+
+async function loadSummonsList() {
+    try {
+        const res = await axios.get(`/api/cases/${caseId}/documents`, { params: { doc_type: '传票' } });
+        cachedSummonsDocs = res.data;
+        renderSummonsList(cachedSummonsDocs);
+    } catch(e) {
+        console.error('加载传票列表失败', e);
+    }
+}
+
+function renderSummonsList(docs) {
+    const container = document.getElementById('summons-list-container');
+    if (!docs || docs.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center p-3 mb-0">暂无传票</p>';
+        return;
+    }
+    
+    container.innerHTML = docs.map(d => {
+        let infoBadges = [];
+        if (d.hearing_date) infoBadges.push(`<span class="badge bg-danger me-1" style="font-size:10px;"><i class="bi bi-calendar-event"></i> ${d.hearing_date}</span>`);
+        if (d.hearing_time) infoBadges.push(`<span class="badge bg-warning text-dark me-1" style="font-size:10px;"><i class="bi bi-clock"></i> ${d.hearing_time}</span>`);
+        if (d.hearing_court) infoBadges.push(`<span class="badge bg-info text-dark me-1" style="font-size:10px;">${d.hearing_court}</span>`);
+        
+        const createdStr = d.created_at ? new Date(d.created_at).toLocaleDateString('zh-CN') : '';
+        
+        return `
+        <div class="d-flex align-items-center p-2 border-bottom" style="cursor:pointer;transition:background 0.15s;" onclick="editSummonsDoc(${d.id})"
+             onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+            <div style="font-size:20px;margin-right:12px;flex-shrink:0;">
+                ${d.file_name && d.file_name.toLowerCase().endsWith('.pdf') 
+                    ? '<i class="bi bi-file-earmark-pdf text-danger"></i>' 
+                    : '<i class="bi bi-file-earmark-image text-primary"></i>'}
+            </div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-truncate" style="font-size:13px;max-width:200px;">${d.file_name || '未知文件'}</span>
+                    ${infoBadges.join('')}
+                </div>
+                <small class="text-muted">${formatFileSize(d.file_size)} · ${createdStr}</small>
+            </div>
+            <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); openFilePreview(${d.id})" title="预览"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); downloadFile(${d.id})" title="下载"><i class="bi bi-download"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteDocument(${d.id}, 'summons')" title="删除"><i class="bi bi-trash"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function editSummonsDoc(docId) {
+    const doc = cachedSummonsDocs.find(d => d.id === docId);
+    if (!doc) return;
+    fillSummonsInfoForm(doc);
+    document.getElementById('summons-info-form').style.display = 'block';
+    // scroll to form
+    document.getElementById('summons-info-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function saveSummonsInfo(e) {
+    e.preventDefault();
+    const docId = document.getElementById('summons-doc-id').value;
+    if (!docId) {
+        alert('请先选择要填写的传票');
+        return;
+    }
+    
+    const data = {
+        hearing_date: document.getElementById('summons-hearing-date').value || null,
+        hearing_time: document.getElementById('summons-hearing-time').value || null,
+        hearing_case_number: document.getElementById('summons-case-number').value || null,
+        hearing_court: document.getElementById('summons-court').value || null,
+        hearing_location: document.getElementById('summons-location').value || null,
+        hearing_judge: document.getElementById('summons-judge').value || null,
+        clerk: document.getElementById('summons-clerk').value || null,
+        contact_phone: document.getElementById('summons-contact-phone').value || null,
+        case_cause: document.getElementById('summons-case-cause').value || null,
+        summons_cause: document.getElementById('summons-cause').value || null,
+        summoned_party: document.getElementById('summons-party').value || null,
+        summoned_address: document.getElementById('summons-address').value || null,
+    };
+    
+    try {
+        await axios.put(`/api/cases/${caseId}/documents/${docId}`, data);
+        document.getElementById('summons-info-form').style.display = 'none';
+        clearSummonsInfoForm();
+        loadSummonsList();
+        loadTimeline();
+        loadTodos();
+    } catch(e) {
+        alert('保存失败: ' + (e.response?.data?.message || e.message));
+    }
+}
+
+// ===================== 案件基本信息 =====================
+
+async function loadCaseDetail() {
+    const res = await axios.get(`/api/cases/${caseId}`);
+    const c = res.data;
+    document.getElementById('case-title').textContent = c.case_name;
+    document.getElementById('case-name-display').textContent = c.case_name;
+    document.getElementById('case-number-display').textContent = c.case_number;
+    document.getElementById('case-status-badge').textContent = c.status;
+    document.getElementById('case-status-badge').className = `badge-status badge-${c.status}`;
+    document.getElementById('info-type').textContent = c.case_type || '-';
+    document.getElementById('info-court').textContent = c.court || '-';
+    document.getElementById('info-client').textContent = c.client_name || '-';
+    document.getElementById('info-client-contact').textContent = c.client_contact || '-';
+    document.getElementById('info-judge').textContent = c.judge || '-';
+    document.getElementById('info-opposing').textContent = c.opposing_party || '-';
+    document.getElementById('info-opposing-counsel').textContent = c.opposing_counsel || '-';
+    document.getElementById('info-claim').textContent = c.claim_amount ? '¥' + c.claim_amount.toLocaleString() : '-';
+    document.getElementById('info-fee').textContent = c.fee_amount ? '¥' + c.fee_amount.toLocaleString() : '-';
+    document.getElementById('info-fee-status').innerHTML = `<span class="badge-status badge-${c.fee_status}">${c.fee_status}</span>`;
+    document.getElementById('info-create-date').textContent = c.create_date || '-';
+    document.getElementById('info-desc').textContent = c.description || '-';
+    document.title = `${c.case_name} - 个人案件管理系统`;
+}
+
+// ===================== 时间线 =====================
+
+async function loadTimeline() {
+    const res = await axios.get('/api/timeline', { params: { case_id: caseId } });
+    const el = document.getElementById('timeline-container');
+    if (res.data.length === 0) {
+        el.innerHTML = '<p class="text-muted text-center">暂无时间线事件</p>';
+        return;
+    }
+    el.innerHTML = res.data.map(e => `
+        <div class="timeline-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="timeline-date">${e.date} · ${e.event_type}</div>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTimelineEvent(${e.id})" title="编辑"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTimelineEvent(${e.id})" title="删除"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+            <div class="timeline-title">${e.title}</div>
+            <div class="timeline-desc">${e.description || ''}</div>
+        </div>
+    `).join('');
+}
+
+function showTimelineForm(eventData) {
+    const form = document.getElementById('timeline-form');
+    const titleEl = document.getElementById('timeline-form-title');
+    const saveBtn = document.getElementById('tl-save-btn');
+    const editIdEl = document.getElementById('tl-edit-id');
+
+    if (eventData) {
+        titleEl.textContent = '编辑时间线事件';
+        saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> 更新';
+        editIdEl.value = eventData.id;
+        document.getElementById('tl-date').value = eventData.date || '';
+        document.getElementById('tl-type').value = eventData.event_type || '其他';
+        document.getElementById('tl-title').value = eventData.title || '';
+        document.getElementById('tl-desc').value = eventData.description || '';
+    } else {
+        titleEl.textContent = '添加时间线事件';
+        saveBtn.innerHTML = '<i class="bi bi-plus"></i> 保存';
+        editIdEl.value = '';
+        document.getElementById('tl-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('tl-type').value = '其他';
+        document.getElementById('tl-title').value = '';
+        document.getElementById('tl-desc').value = '';
+    }
+    form.style.display = 'block';
+}
+
+function cancelTimelineForm() {
+    document.getElementById('timeline-form').style.display = 'none';
+    document.getElementById('tl-edit-id').value = '';
+}
+
+function editTimelineEvent(eventId) {
+    axios.get('/api/timeline', { params: { case_id: caseId } }).then(res => {
+        const event = res.data.find(e => e.id === eventId);
+        if (event) {
+            showTimelineForm(event);
+        }
+    });
+}
+
+async function saveTimelineEvent() {
+    const editId = document.getElementById('tl-edit-id').value;
+    const payload = {
+        case_id: caseId,
+        date: document.getElementById('tl-date').value,
+        event_type: document.getElementById('tl-type').value,
+        title: document.getElementById('tl-title').value,
+        description: document.getElementById('tl-desc').value,
+    };
+
+    if (editId) {
+        await axios.put(`/api/timeline/${editId}`, payload);
+    } else {
+        await axios.post('/api/timeline', payload);
+    }
+    cancelTimelineForm();
+    loadTimeline();
+}
+
+async function deleteTimelineEvent(eventId) {
+    if (!confirm('确认删除此时间线事件？')) return;
+    await axios.delete(`/api/timeline/${eventId}`);
+    loadTimeline();
+}
+
+// ===================== 跟进记录 =====================
+
+// ===================== 工作记录 =====================
+
+const WORK_CATEGORY_ICONS = {
+    '出庭': 'bi-building', '阅卷': 'bi-book', '起草': 'bi-pencil',
+    '沟通': 'bi-chat-left-text', '调研': 'bi-search', '取证': 'bi-file-earmark-lock',
+    '谈判': 'bi-handshake', '其他': 'bi-three-dots'
+};
+const WORK_CATEGORY_COLORS = {
+    '出庭': '#e74c3c', '阅卷': '#7B2D8E', '起草': '#2ecc71',
+    '沟通': '#f39c12', '调研': '#9b59b6', '取证': '#1abc9c',
+    '谈判': '#e67e22', '其他': '#95a5a6'
+};
+
+async function loadWorkRecords() {
+    const res = await axios.get('/api/work-records', { params: { case_id: caseId } });
+    const container = document.getElementById('work-records-container');
+    const statsEl = document.getElementById('work-stats');
+
+    if (res.data.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-pencil-square" style="font-size:40px;color:#ccc;"></i>
+                <p class="mt-2 text-muted">暂无工作记录</p>
+                <button class="btn btn-sm btn-outline-primary" onclick="showWorkForm()"><i class="bi bi-plus"></i> 添加第一条记录</button>
+            </div>`;
+        statsEl.innerHTML = '';
+        window._cachedWorkRecords = [];
+        return;
+    }
+
+    // Cache for editing
+    window._cachedWorkRecords = res.data;
+
+    // 统计
+    const totalHours = res.data.reduce((s, r) => s + (r.hours || 0), 0);
+    const categories = {};
+    res.data.forEach(r => { categories[r.category] = (categories[r.category] || 0) + 1; });
+
+    statsEl.innerHTML = `
+        <div class="d-flex gap-3 flex-wrap">
+            <span class="badge bg-light text-dark" style="font-size:13px;">
+                <i class="bi bi-clock"></i> 总工时: ${totalHours}小时
+            </span>
+            ${Object.entries(categories).map(([k,v]) =>
+                `<span class="badge bg-light text-dark" style="font-size:13px;">
+                    <i class="bi ${WORK_CATEGORY_ICONS[k] || 'bi-three-dots'}" style="color:${WORK_CATEGORY_COLORS[k] || '#95a5a6'}"></i> ${k}: ${v}条
+                </span>`
+            ).join('')}
+        </div>`;
+
+    container.innerHTML = res.data.map(r => {
+        const icon = WORK_CATEGORY_ICONS[r.category] || 'bi-three-dots';
+        const color = WORK_CATEGORY_COLORS[r.category] || '#95a5a6';
+        return `
+        <div class="border rounded p-3 mb-2" style="border-left: 3px solid ${color} !important;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="d-flex align-items-start gap-2">
+                    <div style="width:36px;height:36px;border-radius:8px;background:${color}15;color:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi ${icon}"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <strong style="font-size:14px;">${r.content}</strong>
+                            <span class="badge" style="background:${color}15;color:${color};font-size:11px;">${r.category}</span>
+                        </div>
+                        <div class="d-flex gap-3 mt-1">
+                            <small class="text-muted"><i class="bi bi-calendar3"></i> ${r.date}</small>
+                            ${r.hours ? `<small class="text-muted"><i class="bi bi-clock"></i> ${r.hours}h</small>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editWorkRecord(${r.id})" title="编辑"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteWorkRecord(${r.id})" title="删除"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showWorkForm(editData) {
+    const form = document.getElementById('work-form');
+    form.style.display = 'block';
+    if (editData) {
+        document.getElementById('work-form-title').textContent = '编辑工作记录';
+        document.getElementById('wr-save-btn').textContent = '更新';
+        document.getElementById('wr-edit-id').value = editData.id;
+        document.getElementById('wr-date').value = editData.date || '';
+        document.getElementById('wr-category').value = editData.category || '出庭';
+        document.getElementById('wr-content').value = editData.content || '';
+        document.getElementById('wr-hours').value = editData.hours || '';
+    } else {
+        document.getElementById('work-form-title').textContent = '添加工作记录';
+        document.getElementById('wr-save-btn').textContent = '保存';
+        document.getElementById('wr-edit-id').value = '';
+        document.getElementById('wr-date').value = new Date().toISOString().slice(0,10);
+        document.getElementById('wr-category').value = '出庭';
+        document.getElementById('wr-content').value = '';
+        document.getElementById('wr-hours').value = '';
+    }
+}
+function cancelWorkForm() { document.getElementById('work-form').style.display = 'none'; }
+
+function editWorkRecord(id) {
+    // Find the record from loaded data
+    const allRecords = window._cachedWorkRecords || [];
+    const rec = allRecords.find(r => r.id === id);
+    if (rec) showWorkForm(rec);
+}
+
+async function saveWorkRecord() {
+    const editId = document.getElementById('wr-edit-id').value;
+    const data = {
+        case_id: caseId,
+        date: document.getElementById('wr-date').value,
+        category: document.getElementById('wr-category').value,
+        content: document.getElementById('wr-content').value,
+        hours: document.getElementById('wr-hours').value,
+    };
+    if (!data.content.trim()) { alert('请输入工作内容'); return; }
+
+    if (editId) {
+        await axios.put(`/api/work-records/${editId}`, data);
+    } else {
+        await axios.post('/api/work-records', data);
+    }
+    document.getElementById('work-form').style.display = 'none';
+    loadWorkRecords();
+}
+async function deleteWorkRecord(id) {
+    if (!confirm('确认删除此工作记录？')) return;
+    await axios.delete(`/api/work-records/${id}`);
+    loadWorkRecords();
+}
+
+// ===================== 待办事项 =====================
+
+async function loadTodos() {
+    const res = await axios.get('/api/todos', { params: { case_id: caseId } });
+    const el = document.getElementById('todo-container');
+    // Cache for editing
+    window._cachedTodos = res.data;
+
+    if (res.data.length === 0) {
+        el.innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-check2-square" style="font-size:40px;color:#ccc;"></i>
+                <p class="mt-2 text-muted">暂无待办事项</p>
+                <button class="btn btn-sm btn-outline-primary" onclick="showTodoForm()"><i class="bi bi-plus"></i> 添加第一条待办</button>
+            </div>`;
+        return;
+    }
+
+    const priorityOrder = {'紧急': 0, '重要': 1, '普通': 2};
+    const sorted = [...res.data].sort((a, b) => {
+        if (a.status === '已完成' && b.status !== '已完成') return 1;
+        if (a.status !== '已完成' && b.status === '已完成') return -1;
+        return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+    });
+
+    el.innerHTML = sorted.map(t => {
+        const isComplete = t.status === '已完成';
+        const isOverdue = !isComplete && t.deadline && new Date(t.deadline) < new Date(new Date().toDateString());
+        const priorityColors = {'紧急': '#e74c3c', '重要': '#f39c12', '普通': '#95a5a6'};
+        const pColor = priorityColors[t.priority] || '#95a5a6';
+
+        return `
+        <div class="border rounded p-3 mb-2 ${isComplete ? 'bg-light' : ''}" style="border-left: 3px solid ${isComplete ? '#ccc' : pColor} !important; ${isComplete ? 'opacity:0.7' : ''}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="d-flex align-items-start gap-2">
+                    <button class="btn btn-sm ${isComplete ? 'btn-success' : 'btn-outline-success'} flex-shrink-0" onclick="completeTodo(${t.id})" title="${isComplete ? '已完成' : '标记完成'}" style="border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;padding:0;">
+                        <i class="bi ${isComplete ? 'bi-check-lg' : ''}"></i>
+                    </button>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span style="font-size:14px;font-weight:600;${isComplete ? 'text-decoration:line-through;color:#999;' : ''}">${t.title}</span>
+                            <span class="badge" style="background:${pColor}15;color:${pColor};font-size:11px;">${t.priority}</span>
+                            ${isOverdue ? '<span class="badge bg-danger" style="font-size:11px;">已逾期</span>' : ''}
+                        </div>
+                        ${t.description ? `<p class="mb-0 mt-1 text-muted" style="font-size:13px;">${t.description}</p>` : ''}
+                        <div class="d-flex gap-3 mt-1">
+                            ${t.deadline ? `<small class="${isOverdue ? 'text-danger fw-bold' : 'text-muted'}"><i class="bi bi-calendar3"></i> 截止: ${t.deadline}</small>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-1">
+                    ${!isComplete ? `<button class="btn btn-sm btn-outline-secondary" onclick="editTodo(${t.id})" title="编辑"><i class="bi bi-pencil"></i></button>` : ''}
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTodo(${t.id})" title="删除"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showTodoForm(editData) {
+    const form = document.getElementById('todo-form');
+    form.style.display = 'block';
+    if (editData) {
+        document.getElementById('todo-form-title').textContent = '编辑待办事项';
+        document.getElementById('todo-save-btn').textContent = '更新';
+        document.getElementById('todo-edit-id').value = editData.id;
+        document.getElementById('todo-title').value = editData.title || '';
+        document.getElementById('todo-deadline').value = editData.deadline || '';
+        document.getElementById('todo-priority').value = editData.priority || '普通';
+        document.getElementById('todo-desc').value = editData.description || '';
+    } else {
+        document.getElementById('todo-form-title').textContent = '添加待办事项';
+        document.getElementById('todo-save-btn').textContent = '保存';
+        document.getElementById('todo-edit-id').value = '';
+        document.getElementById('todo-title').value = '';
+        document.getElementById('todo-deadline').value = '';
+        document.getElementById('todo-priority').value = '普通';
+        document.getElementById('todo-desc').value = '';
+    }
+}
+function cancelTodoForm() { document.getElementById('todo-form').style.display = 'none'; }
+
+function editTodo(id) {
+    const todo = (window._cachedTodos || []).find(t => t.id === id);
+    if (todo) showTodoForm(todo);
+}
+
+async function saveTodo() {
+    const editId = document.getElementById('todo-edit-id').value;
+    const data = {
+        case_id: caseId,
+        title: document.getElementById('todo-title').value,
+        deadline: document.getElementById('todo-deadline').value,
+        priority: document.getElementById('todo-priority').value,
+        description: document.getElementById('todo-desc').value,
+    };
+    if (!data.title.trim()) { alert('请输入待办标题'); return; }
+
+    if (editId) {
+        await axios.put(`/api/todos/${editId}`, data);
+    } else {
+        await axios.post('/api/todos', data);
+    }
+    document.getElementById('todo-form').style.display = 'none';
+    loadTodos();
+}
+async function completeTodo(id) {
+    const todo = (window._cachedTodos || []).find(t => t.id === id);
+    if (!todo) return;
+    const newStatus = todo.status === '已完成' ? '待办' : '已完成';
+    await axios.put(`/api/todos/${id}`, { status: newStatus });
+    loadTodos();
+}
+async function deleteTodo(id) {
+    if (!confirm('确认删除此待办？')) return;
+    await axios.delete(`/api/todos/${id}`);
+    loadTodos();
+}
+
+// ===================== 跟进记录 =====================
+
+async function loadFollowups() {
+    const res = await axios.get('/api/followups', { params: { case_id: caseId } });
+    const el = document.getElementById('followup-container');
+    // Cache for editing
+    window._cachedFollowups = res.data;
+
+    if (res.data.length === 0) {
+        el.innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-chat-dots" style="font-size:40px;color:#ccc;"></i>
+                <p class="mt-2 text-muted">暂无跟进记录</p>
+                <button class="btn btn-sm btn-outline-primary" onclick="showFollowupForm()"><i class="bi bi-plus"></i> 添加第一条跟进</button>
+            </div>`;
+        return;
+    }
+
+    el.innerHTML = res.data.map(f => {
+        return `
+        <div class="border rounded p-3 mb-2" style="border-left: 3px solid #7B2D8E !important;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div style="flex:1;min-width:0;">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge" style="font-size:11px;background:#7B2D8E;"><i class="bi bi-calendar3"></i> ${f.date}</span>
+                        ${f.contact_person ? `<span class="badge bg-info" style="font-size:11px;"><i class="bi bi-person"></i> ${f.contact_person}</span>` : ''}
+                        ${f.contact_phone ? `<span class="badge bg-secondary" style="font-size:11px;"><i class="bi bi-telephone"></i> ${f.contact_phone}</span>` : ''}
+                    </div>
+                    <div style="font-size:14px;font-weight:500;">${f.content}</div>
+                    ${f.result ? `<div class="mt-1"><span class="text-muted" style="font-size:12px;">结果:</span> <span style="font-size:13px;color:#27ae60;">${f.result}</span></div>` : ''}
+                    ${f.next_action ? `<div class="mt-1"><span class="text-muted" style="font-size:12px;">下一步:</span> <span style="font-size:13px;color:#7B2D8E;">${f.next_action}</span></div>` : ''}
+                </div>
+                <div class="d-flex gap-1 flex-shrink-0 ms-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editFollowup(${f.id})" title="编辑"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteFollowup(${f.id})" title="删除"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showFollowupForm(editData) {
+    const form = document.getElementById('followup-form');
+    form.style.display = 'block';
+    if (editData) {
+        document.getElementById('followup-form-title').textContent = '编辑跟进记录';
+        document.getElementById('fu-save-btn').textContent = '更新';
+        document.getElementById('fu-edit-id').value = editData.id;
+        document.getElementById('fu-date').value = editData.date || '';
+        document.getElementById('fu-content').value = editData.content || '';
+        document.getElementById('fu-contact-person').value = editData.contact_person || '';
+        document.getElementById('fu-contact-phone').value = editData.contact_phone || '';
+        document.getElementById('fu-result').value = editData.result || '';
+        document.getElementById('fu-next').value = editData.next_action || '';
+    } else {
+        document.getElementById('followup-form-title').textContent = '添加跟进记录';
+        document.getElementById('fu-save-btn').textContent = '保存';
+        document.getElementById('fu-edit-id').value = '';
+        document.getElementById('fu-date').value = new Date().toISOString().slice(0,10);
+        document.getElementById('fu-content').value = '';
+        document.getElementById('fu-contact-person').value = '';
+        document.getElementById('fu-contact-phone').value = '';
+        document.getElementById('fu-result').value = '';
+        document.getElementById('fu-next').value = '';
+    }
+}
+function cancelFollowupForm() { document.getElementById('followup-form').style.display = 'none'; }
+
+function editFollowup(id) {
+    const fu = (window._cachedFollowups || []).find(f => f.id === id);
+    if (fu) showFollowupForm(fu);
+}
+
+async function saveFollowup() {
+    const editId = document.getElementById('fu-edit-id').value;
+    const data = {
+        case_id: caseId,
+        date: document.getElementById('fu-date').value,
+        content: document.getElementById('fu-content').value,
+        contact_person: document.getElementById('fu-contact-person').value,
+        contact_phone: document.getElementById('fu-contact-phone').value,
+        result: document.getElementById('fu-result').value,
+        next_action: document.getElementById('fu-next').value,
+    };
+    if (!data.content.trim()) { alert('请输入跟进内容'); return; }
+
+    if (editId) {
+        await axios.put(`/api/followups/${editId}`, data);
+    } else {
+        await axios.post('/api/followups', data);
+    }
+    document.getElementById('followup-form').style.display = 'none';
+    loadFollowups();
+}
+async function deleteFollowup(id) {
+    if (!confirm('确认删除此跟进记录？')) return;
+    await axios.delete(`/api/followups/${id}`);
+    loadFollowups();
+}
+
+// ===================== 初始化 =====================
+loadCaseDetail();
+loadGeneralDocuments();
+loadTimeline();
+loadFollowups();
+loadWorkRecords();
+loadTodos();
+loadSummonsList();
+
+function downloadFile(docId) {
+    if (!docId) return;
+    const link = document.createElement('a');
+    link.href = `/api/cases/${caseId}/documents/${docId}/download`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ===================== 文件预览 =====================
+
+function openFilePreview(docId) {
+    if (!docId) return;
+    currentPreviewDocId = docId;
+
+    const allDocs = [...(cachedGeneralDocs || []), ...(cachedSummonsDocs || [])];
+    const doc = allDocs.find(d => d.id === docId);
+    if (!doc) return;
+
+    const ext = doc.file_name.split('.').pop().toLowerCase();
+    currentPreviewExt = ext;
+
+    document.getElementById('file-preview-title').textContent = doc.file_name;
+    const body = document.getElementById('file-preview-body');
+    body.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">加载中...</p></div>';
+
+    if (ext === 'pdf') {
+        body.innerHTML = '';
+        const iframe = document.createElement('iframe');
+        iframe.src = `/api/cases/${caseId}/documents/${docId}/view`;
+        iframe.style.width = '100%';
+        iframe.style.height = '75vh';
+        iframe.style.border = 'none';
+        body.appendChild(iframe);
+        new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    } else if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext)) {
+        body.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = `/api/cases/${caseId}/documents/${docId}/view`;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '75vh';
+        img.style.objectFit = 'contain';
+        body.appendChild(img);
+        new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    } else if (['docx'].includes(ext)) {
+        previewWord(docId, body);
+    } else if (['doc'].includes(ext)) {
+        body.innerHTML = '<div class="text-center p-5"><i class="bi bi-file-earmark-word" style="font-size:48px;color:#2b579a;"></i><p class="mt-3 text-muted">.doc 格式不支持在线预览</p><p class="text-muted" style="font-size:13px;">请下载后使用 Word 或 WPS 打开查看</p></div>';
+        new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    } else if (['xls', 'xlsx'].includes(ext)) {
+        previewExcel(docId, body);
+    } else if (['ppt', 'pptx'].includes(ext)) {
+        body.innerHTML = '<div class="text-center p-5"><i class="bi bi-file-earmark-slides" style="font-size:48px;color:#d24726;"></i><p class="mt-3 text-muted">PPT 文件暂不支持在线预览</p><p class="text-muted" style="font-size:13px;">请下载后使用 PowerPoint 或 WPS 打开查看</p></div>';
+        new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    } else if (['mp4', 'webm', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'm4v', '3gp'].includes(ext)) {
+        body.innerHTML = '';
+        const video = document.createElement('video');
+        video.src = `/api/cases/${caseId}/documents/${docId}/view`;
+        video.controls = true;
+        video.style.maxWidth = '100%';
+        video.style.maxHeight = '70vh';
+        video.autoplay = false;
+        body.appendChild(video);
+        new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    } else {
+        body.innerHTML = '<div class="text-center p-5"><i class="bi bi-file-earmark" style="font-size:48px;color:#6c757d;"></i><p class="mt-3 text-muted">不支持预览此格式文件</p><p class="text-muted" style="font-size:13px;">请下载后查看</p></div>';
+        new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    }
+}
+
+async function previewWord(docId, container) {
+    try {
+        const response = await fetch(`/api/cases/${caseId}/documents/${docId}/view`);
+        const arrayBuffer = await response.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+        container.innerHTML = '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'docx-preview';
+        wrapper.innerHTML = result.value || '<p class="text-muted">文档内容为空</p>';
+        container.appendChild(wrapper);
+        if (result.messages && result.messages.length > 0) {
+            console.log('Mammoth warnings:', result.messages);
+        }
+    } catch (e) {
+        console.error('Word preview error:', e);
+        container.innerHTML = '<div class="text-center p-5"><i class="bi bi-exclamation-triangle" style="font-size:48px;color:#f39c12;"></i><p class="mt-3 text-muted">Word 文件预览失败</p><p class="text-muted" style="font-size:13px;">' + e.message + '</p></div>';
+    }
+    new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+}
+
+async function previewExcel(docId, container) {
+    try {
+        const response = await fetch(`/api/cases/${caseId}/documents/${docId}/view`);
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        container.innerHTML = '';
+
+        const sheetNames = workbook.SheetNames;
+        const nav = document.createElement('ul');
+        nav.className = 'nav nav-tabs mb-2';
+        const tabContent = document.createElement('div');
+        tabContent.className = 'tab-content';
+
+        sheetNames.forEach((name, idx) => {
+            const li = document.createElement('li');
+            li.className = 'nav-item';
+            const a = document.createElement('a');
+            a.className = 'nav-link' + (idx === 0 ? ' active' : '');
+            a.href = '#sheet-' + idx;
+            a.textContent = name;
+            a.setAttribute('data-bs-toggle', 'tab');
+            li.appendChild(a);
+            nav.appendChild(li);
+
+            const tabPane = document.createElement('div');
+            tabPane.className = 'tab-pane fade' + (idx === 0 ? ' show active' : '');
+            tabPane.id = 'sheet-' + idx;
+
+            const sheet = workbook.Sheets[name];
+            const html = XLSX.utils.sheet_to_html(sheet, { editable: false });
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'excel-table-wrapper';
+            tableWrapper.innerHTML = html;
+            tabPane.appendChild(tableWrapper);
+            tabContent.appendChild(tabPane);
+        });
+
+        container.appendChild(nav);
+        container.appendChild(tabContent);
+    } catch (e) {
+        console.error('Excel preview error:', e);
+        container.innerHTML = '<div class="text-center p-5"><i class="bi bi-exclamation-triangle" style="font-size:48px;color:#f39c12;"></i><p class="mt-3 text-muted">Excel 文件预览失败</p><p class="text-muted" style="font-size:13px;">' + e.message + '</p></div>';
+    }
+    new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+}
+
+function openInNewTab() {
+    if (!currentPreviewDocId) return;
+    window.open(`/api/cases/${caseId}/documents/${currentPreviewDocId}/view`, '_blank');
+}
+</script>
+{% endblock %}
