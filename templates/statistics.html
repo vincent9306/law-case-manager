@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}数据统计 - 个人案件管理系统{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-bar-chart-line"></i> 数据统计</h2>
+</div>
+
+<!-- 核心指标 -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card stat-card">
+            <div class="stat-number text-primary" id="s-total-cases">0</div>
+            <div class="stat-label">总案件</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card">
+            <div class="stat-number text-success" id="s-active-cases">0</div>
+            <div class="stat-label">进行中</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card">
+            <div class="stat-number text-info" id="s-closed-cases">0</div>
+            <div class="stat-label">已结案</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card">
+            <div class="stat-number" id="s-total-claim" style="color: var(--accent);">¥0</div>
+            <div class="stat-label">总诉求金额</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card">
+            <div class="stat-number text-success" id="s-total-fee">¥0</div>
+            <div class="stat-label">总律师费</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card">
+            <div class="stat-number text-danger" id="s-unpaid-fee">¥0</div>
+            <div class="stat-label">未收律师费</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 案由分布 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-pie-chart"></i> 案由分布</div>
+            <div class="card-body" id="type-distribution"></div>
+        </div>
+    </div>
+    <!-- 案件状态分布 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-list-check"></i> 案件状态分布</div>
+            <div class="card-body" id="status-distribution"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 收费状态 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-cash-stack"></i> 收费状态统计</div>
+            <div class="card-body" id="fee-distribution"></div>
+        </div>
+    </div>
+    <!-- 工时统计 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history"></i> 工时统计</div>
+            <div class="card-body">
+                <div id="hours-stat">
+                    <p>近30天总工时: <strong id="s-monthly-hours">0</strong> 小时</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 逾期待办 -->
+<div class="card mt-3">
+    <div class="card-header text-danger"><i class="bi bi-exclamation-triangle"></i> 逾期待办事项</div>
+    <div class="card-body" id="overdue-list"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadStatistics() {
+    const res = await axios.get('/api/statistics/overview');
+    const data = res.data;
+
+    document.getElementById('s-total-cases').textContent = data.total_cases;
+    document.getElementById('s-active-cases').textContent = data.active_cases;
+    document.getElementById('s-closed-cases').textContent = data.closed_cases;
+    document.getElementById('s-total-claim').textContent = '¥' + (data.total_claim || 0).toLocaleString();
+    document.getElementById('s-total-fee').textContent = '¥' + (data.total_fee || 0).toLocaleString();
+    document.getElementById('s-unpaid-fee').textContent = '¥' + (data.unpaid_fee || 0).toLocaleString();
+    document.getElementById('s-monthly-hours').textContent = (data.monthly_hours || 0);
+
+    // 案由分布
+    const maxType = Math.max(...data.type_distribution.map(t => t.count), 1);
+    document.getElementById('type-distribution').innerHTML = data.type_distribution.map(t => `
+        <div class="d-flex align-items-center mb-2">
+            <span style="width: 120px">${t.case_type}</span>
+            <div class="progress flex-grow-1" style="height: 20px;">
+                <div class="progress-bar" style="width: ${(t.count / maxType * 100)}%;background:#7B2D8E;">${t.count}</div>
+            </div>
+        </div>
+    `).join('') || '<p class="text-muted">暂无数据</p>';
+
+    // 状态分布
+    const maxStatus = Math.max(...data.status_distribution.map(s => s.count), 1);
+    const statusColors = {
+        '一审进行中': 'bg-success',
+        '一审已结案': 'bg-info',
+        '二审进行中': 'bg-primary',
+        '二审已结案': 'bg-info',
+        '执行进行中': 'bg-warning',
+        '执行已终本': 'bg-danger',
+        '执行完毕': 'bg-secondary',
+        '已结案': 'bg-dark'
+    };
+    document.getElementById('status-distribution').innerHTML = data.status_distribution.map(s => `
+        <div class="d-flex align-items-center mb-2">
+            <span style="width: 80px">${s.status}</span>
+            <div class="progress flex-grow-1" style="height: 20px;">
+                <div class="progress-bar ${statusColors[s.status] || 'bg-secondary'}" style="width: ${(s.count / maxStatus * 100)}%">${s.count}</div>
+            </div>
+        </div>
+    `).join('') || '<p class="text-muted">暂无数据</p>';
+
+    // 收费状态
+    const feeColors = { '未收费': 'bg-danger', '部分收费': 'bg-warning', '已收费': 'bg-success' };
+    document.getElementById('fee-distribution').innerHTML = data.fee_distribution.map(f => `
+        <div class="d-flex align-items-center mb-2">
+            <span style="width: 80px">${f.fee_status}</span>
+            <div class="progress flex-grow-1" style="height: 20px;">
+                <div class="progress-bar ${feeColors[f.fee_status] || 'bg-secondary'}" style="width: 50%">${f.count}件 / ¥${(f.amount || 0).toLocaleString()}</div>
+            </div>
+        </div>
+    `).join('') || '<p class="text-muted">暂无数据</p>';
+
+    // 逾期待办
+    if (data.overdue_todos > 0) {
+        document.getElementById('overdue-list').innerHTML = `<p class="text-danger">共有 <strong>${data.overdue_todos}</strong> 项逾期待办事项</p>`;
+    } else {
+        document.getElementById('overdue-list').innerHTML = '<p class="text-muted">暂无逾期待办</p>';
+    }
+}
+
+loadStatistics();
+</script>
+{% endblock %}
