@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% block title %}案件管理 - 个人案件管理系统{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-folder2-open"></i> 案件管理</h2>
+    <button class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#caseModal" onclick="resetCaseForm()">
+        <i class="bi bi-plus-circle"></i> 新建案件
+    </button>
+</div>
+
+<!-- 筛选 -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" class="form-control" id="search-keyword" placeholder="搜索案号、案件名称、对方当事人" oninput="loadCases()">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filter-status" onchange="loadCases()">
+                    <option value="">全部状态</option>
+                    <option value="一审进行中">一审进行中</option>
+                    <option value="一审已结案">一审已结案</option>
+                    <option value="二审进行中">二审进行中</option>
+                    <option value="二审已结案">二审已结案</option>
+                    <option value="执行进行中">执行进行中</option>
+                    <option value="执行已终本">执行已终本</option>
+                    <option value="执行完毕">执行完毕</option>
+                    <option value="已结案">已结案</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filter-type" onchange="loadCases()">
+                    <option value="">全部案由</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 案件列表 -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>案号</th>
+                    <th>案件名称</th>
+                    <th>案由</th>
+                    <th>客户</th>
+                    <th>状态</th>
+                    <th>收费状态</th>
+                    <th>开票状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="cases-table">
+                <tr><td colspan="8" class="text-center text-muted py-4">暂无案件，点击新建案件开始</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新建/编辑案件弹窗 -->
+<div class="modal fade" id="caseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="caseModalTitle">新建案件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="caseForm">
+                    <input type="hidden" id="case-id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">案号 *</label>
+                            <input type="text" class="form-control" id="case_number" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">案件名称 *</label>
+                            <input type="text" class="form-control" id="case_name" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">案由 *</label>
+                            <input type="text" class="form-control" id="case_type" required placeholder="如：合同纠纷、劳动争议">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">受理法院</label>
+                            <input type="text" class="form-control" id="court">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">法官</label>
+                            <input type="text" class="form-control" id="judge">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">案件状态</label>
+                            <select class="form-select" id="status">
+                                <option value="一审进行中">一审进行中</option>
+                                <option value="一审已结案">一审已结案</option>
+                                <option value="二审进行中">二审进行中</option>
+                                <option value="二审已结案">二审已结案</option>
+                                <option value="执行进行中">执行进行中</option>
+                                <option value="执行已终本">执行已终本</option>
+                                <option value="执行完毕">执行完毕</option>
+                                <option value="已结案">已结案</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">客户</label>
+                            <input type="text" class="form-control" id="client_name" placeholder="请输入客户名称" list="client-suggestions" autocomplete="off">
+                            <datalist id="client-suggestions"></datalist>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">客户联系方式</label>
+                            <input type="text" class="form-control" id="client_contact" placeholder="手机号/邮箱等">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">立案日期</label>
+                            <input type="date" class="form-control" id="create_date">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">对方当事人</label>
+                            <input type="text" class="form-control" id="opposing_party">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">诉求金额(元)</label>
+                            <input type="number" class="form-control" id="claim_amount" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">律师费(元)</label>
+                            <input type="number" class="form-control" id="fee_amount" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">收费状态</label>
+                            <select class="form-select" id="fee_status">
+                                <option value="未收费">未收费</option>
+                                <option value="部分收费">部分收费</option>
+                                <option value="已收费">已收费</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">开票状态</label>
+                            <select class="form-select" id="invoice_status">
+                                <option value="未开票">未开票</option>
+                                <option value="部分开票">部分开票</option>
+                                <option value="已开票">已开票</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">案件描述</label>
+                            <textarea class="form-control" id="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-accent" onclick="saveCase()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let editingCaseId = null;
+
+async function loadCaseTypes() {
+    const res = await axios.get('/api/case-types');
+    // 填充筛选下拉框
+    const filterSel = document.getElementById('filter-type');
+    filterSel.innerHTML = '<option value="">全部案由</option>' + res.data.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+}
+
+async function loadClients() {
+    const res = await axios.get('/api/clients');
+    const datalist = document.getElementById('client-suggestions');
+    datalist.innerHTML = res.data.map(c => `<option value="${c.name}">`).join('');
+}
+
+async function loadCases() {
+    const keyword = document.getElementById('search-keyword').value;
+    const status = document.getElementById('filter-status').value;
+    const type = document.getElementById('filter-type').value;
+    const res = await axios.get('/api/cases', { params: { keyword, status, type } });
+    const tbody = document.getElementById('cases-table');
+    if (res.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无案件</td></tr>';
+        return;
+    }
+    tbody.innerHTML = res.data.map(c => `
+        <tr onclick="location.href='/cases/${c.id}'" style="cursor:pointer">
+            <td><small>${c.case_number}</small></td>
+            <td><strong>${c.case_name}</strong></td>
+            <td>${c.case_type}</td>
+            <td>${c.client_name && c.client_name.length > 4 ? c.client_name.substring(0, 4) + '...' : (c.client_name || '-')}${c.client_contact ? '<br><small class="text-muted">' + c.client_contact + '</small>' : ''}</td>
+            <td><span class="badge-status badge-${c.status}">${c.status}</span></td>
+            <td><span class="badge-status badge-${c.fee_status}" onclick="toggleFeeStatus(event, ${c.id}, this)" style="cursor:pointer" title="点击切换">${c.fee_status}</span></td>
+            <td><span class="badge-status badge-${c.invoice_status || '未开票'}" onclick="toggleInvoiceStatus(event, ${c.id}, this)" style="cursor:pointer" title="点击切换">${c.invoice_status || '未开票'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editCase(${c.id})" title="编辑"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); advanceStatus(${c.id}, '${c.status}')" title="推进状态" ${c.status === '执行完毕' || c.status === '已结案' ? 'disabled' : ''}>
+                    <i class="bi bi-arrow-right-circle"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); markAsClosed(${c.id}, '${c.status}')" title="标记为已结案" ${c.status === '已结案' ? 'disabled' : ''}>
+                    <i class="bi bi-check-circle"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteCase(${c.id})" title="删除"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function resetCaseForm() {
+    editingCaseId = null;
+    document.getElementById('caseModalTitle').textContent = '新建案件';
+    document.getElementById('caseForm').reset();
+    document.getElementById('case-id').value = '';
+}
+
+async function editCase(id) {
+    editingCaseId = id;
+    document.getElementById('caseModalTitle').textContent = '编辑案件';
+    const res = await axios.get(`/api/cases/${id}`);
+    const c = res.data;
+    document.getElementById('case-id').value = c.id;
+    document.getElementById('case_number').value = c.case_number || '';
+    document.getElementById('case_name').value = c.case_name || '';
+    document.getElementById('case_type').value = c.case_type || '';
+    document.getElementById('court').value = c.court || '';
+    document.getElementById('judge').value = c.judge || '';
+    document.getElementById('status').value = c.status || '一审进行中';
+    document.getElementById('client_name').value = c.client_name || '';
+    document.getElementById('client_contact').value = c.client_contact || '';
+    document.getElementById('create_date').value = c.create_date || '';
+    document.getElementById('opposing_party').value = c.opposing_party || '';
+    document.getElementById('fee_amount').value = c.fee_amount || '';
+    document.getElementById('fee_status').value = c.fee_status || '未收费';
+    document.getElementById('invoice_status').value = c.invoice_status || '未开票';
+    document.getElementById('description').value = c.description || '';
+    new bootstrap.Modal(document.getElementById('caseModal')).show();
+}
+
+async function saveCase() {
+    const data = {
+        case_number: document.getElementById('case_number').value,
+        case_name: document.getElementById('case_name').value,
+        case_type: document.getElementById('case_type').value,
+        court: document.getElementById('court').value,
+        judge: document.getElementById('judge').value,
+        status: document.getElementById('status').value,
+        client_name: document.getElementById('client_name').value,
+        client_contact: document.getElementById('client_contact').value,
+        create_date: document.getElementById('create_date').value,
+        opposing_party: document.getElementById('opposing_party').value,
+        fee_amount: document.getElementById('fee_amount').value || null,
+        fee_status: document.getElementById('fee_status').value,
+        invoice_status: document.getElementById('invoice_status').value,
+        description: document.getElementById('description').value,
+    };
+    if (editingCaseId) {
+        await axios.put(`/api/cases/${editingCaseId}`, data);
+    } else {
+        await axios.post('/api/cases', data);
+    }
+    bootstrap.Modal.getInstance(document.getElementById('caseModal')).hide();
+    loadCases();
+}
+
+async function deleteCase(id) {
+    if (!confirm('确认删除此案件？相关记录将一并删除。')) return;
+    await axios.delete(`/api/cases/${id}`);
+    loadCases();
+}
+
+// 状态流转规则
+const statusFlow = {
+    '一审进行中': '一审已结案',
+    '一审已结案': '二审进行中',
+    '二审进行中': '二审已结案',
+    '二审已结案': '执行进行中',
+    '执行进行中': '执行已终本',
+    '执行已终本': '执行完毕',
+    '执行完毕': null  // 终态
+};
+
+async function advanceStatus(id, currentStatus) {
+    const nextStatus = statusFlow[currentStatus];
+    if (!nextStatus) {
+        alert('当前状态已是终态，无法继续推进！');
+        return;
+    }
+    
+    if (!confirm(`确认将案件状态从「${currentStatus}」推进到「${nextStatus}」？`)) return;
+    
+    try {
+        await axios.put(`/api/cases/${id}`, { status: nextStatus });
+        loadCases();
+    } catch (error) {
+        alert('状态更新失败：' + (error.response?.data?.error || error.message));
+    }
+}
+
+async function markAsClosed(id, currentStatus) {
+    if (currentStatus === '已结案') {
+        alert('该案件已标记为已结案！');
+        return;
+    }
+    
+    if (!confirm('确认将此案件标记为「已结案」？')) return;
+    
+    try {
+        await axios.put(`/api/cases/${id}`, { status: '已结案' });
+        loadCases();
+    } catch (error) {
+        alert('标记失败：' + (error.response?.data?.error || error.message));
+    }
+}
+
+const feeStatusCycle = ['未收费', '部分收费', '已收费'];
+async function toggleFeeStatus(ev, id, el) {
+    ev.stopPropagation();
+    const current = el.textContent.trim();
+    if (current === '已收费') return;
+    const idx = feeStatusCycle.indexOf(current);
+    const next = feeStatusCycle[(idx + 1) % feeStatusCycle.length];
+    if (!confirm(`确认将收费状态从「${current}」改为「${next}」？`)) return;
+    await axios.put(`/api/cases/${id}`, { fee_status: next });
+    loadCases();
+}
+
+const invoiceStatusCycle = ['未开票', '部分开票', '已开票'];
+async function toggleInvoiceStatus(ev, id, el) {
+    ev.stopPropagation();
+    const current = el.textContent.trim();
+    if (current === '已开票') return;
+    const idx = invoiceStatusCycle.indexOf(current);
+    const next = invoiceStatusCycle[(idx + 1) % invoiceStatusCycle.length];
+    if (!confirm(`确认将开票状态从「${current}」改为「${next}」？`)) return;
+    await axios.put(`/api/cases/${id}`, { invoice_status: next });
+    loadCases();
+}
+
+// 初始化
+loadCaseTypes();
+loadClients();
+loadCases();
+</script>
+{% endblock %}
