@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}文书模板 - 个人案件管理系统{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-file-earmark-text"></i> 文书模板</h2>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-danger" id="batchDeleteBtn" style="display:none;" onclick="batchDeleteTemplates()">
+            <i class="bi bi-trash"></i> 批量删除 (<span id="selectedCount">0</span>)
+        </button>
+        <button class="btn btn-accent" onclick="showTemplateModal()">
+            <i class="bi bi-plus-circle"></i> 新建模板
+        </button>
+    </div>
+</div>
+
+<!-- 分类筛选 -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <button class="btn btn-outline-secondary active" onclick="filterTemplates('', this)">全部</button>
+            <button class="btn btn-outline-secondary" onclick="filterTemplates('起诉状', this)">起诉状</button>
+            <button class="btn btn-outline-secondary" onclick="filterTemplates('答辩状', this)">答辩状</button>
+            <button class="btn btn-outline-secondary" onclick="filterTemplates('律师函', this)">律师函</button>
+            <button class="btn btn-outline-secondary" onclick="filterTemplates('合同', this)">合同</button>
+            <button class="btn btn-outline-secondary" onclick="filterTemplates('常用法院文书', this)">常用法院文书</button>
+            <button class="btn btn-outline-secondary" onclick="filterTemplates('备忘录', this)">备忘录</button>
+        </div>
+    </div>
+</div>
+
+<div id="templates-list" class="row">
+    <p class="text-muted text-center py-4">暂无文书模板</p>
+</div>
+
+<!-- 新建/编辑模板弹窗 -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tplModalTitle">新建文书模板</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="tplForm">
+                    <input type="hidden" id="tpl-edit-id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">模板名称 *</label>
+                            <input type="text" class="form-control" id="tpl-name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">分类</label>
+                            <select class="form-select" id="tpl-category">
+                                <option value="起诉状">起诉状</option>
+                                <option value="答辩状">答辩状</option>
+                                <option value="律师函">律师函</option>
+                                <option value="合同">合同</option>
+                                <option value="常用法院文书">常用法院文书</option>
+                                <option value="备忘录">备忘录</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <!-- 上传文件区域 -->
+                        <div class="col-12" id="tpl-upload-section">
+                            <label class="form-label"><i class="bi bi-upload"></i> 上传文件</label>
+                            <div class="border rounded p-3 text-center" style="cursor:pointer;background:#fafafa;" onclick="document.getElementById('tpl-file-input').click()" id="tpl-upload-zone">
+                                <i class="bi bi-file-earmark-word" style="font-size:28px;color:var(--accent);"></i>
+                                <i class="bi bi-file-earmark-pdf" style="font-size:28px;color:#e74c3c;margin-left:8px;"></i>
+                                <div class="mt-1"><small class="text-muted">点击上传 .docx 或 .pdf 文件，自动提取内容到下方编辑区</small></div>
+                            </div>
+                            <input type="file" id="tpl-file-input" accept=".docx,.pdf" style="display:none;" onchange="handleTplFileUpload(this)">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">模板内容 *</label>
+                            <textarea class="form-control" id="tpl-content" rows="10" placeholder="支持使用 {变量名} 格式占位符，也可上传 Word/PDF 文件自动填充"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">使用说明</label>
+                            <textarea class="form-control" id="tpl-notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-accent" onclick="saveTemplate()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentTplCategory = '';
+let editingTplId = null;
+let selectedTplIds = new Set();
+let _uploadedFilePath = '';  // 暂存上传文件的路径
+let _uploadedIsPdf = false;  // 标记上传的是否为PDF
+
+function updateBatchDeleteUI() {
+    const btn = document.getElementById('batchDeleteBtn');
+    const countEl = document.getElementById('selectedCount');
+    if (selectedTplIds.size > 0) {
+        btn.style.display = 'inline-flex';
+        countEl.textContent = selectedTplIds.size;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+function toggleSelectTpl(id, el) {
+    if (selectedTplIds.has(id)) {
+        selectedTplIds.delete(id);
+        el.classList.remove('border-primary');
+        el.querySelector('.tpl-check').checked = false;
+    } else {
+        selectedTplIds.add(id);
+        el.classList.add('border-primary');
+        el.querySelector('.tpl-check').checked = true;
+    }
+    updateBatchDeleteUI();
+}
+
+async function batchDeleteTemplates() {
+    if (selectedTplIds.size === 0) return;
+    if (!confirm(`确认批量删除 ${selectedTplIds.size} 个模板？此操作不可恢复。`)) return;
+    for (const id of selectedTplIds) {
+        await axios.delete(`/api/templates/${id}`);
+    }
+    selectedTplIds.clear();
+    updateBatchDeleteUI();
+    loadTemplates();
+}
+
+async function loadTemplates() {
+    const res = await axios.get('/api/templates', { params: { category: currentTplCategory } });
+    const el = document.getElementById('templates-list');
+    if (res.data.length === 0) {
+        el.innerHTML = '<p class="text-muted text-center py-4">暂无文书模板</p>';
+        return;
+    }
+    el.innerHTML = res.data.map(t => {
+        const isPdf = t.file_path && t.file_path.endsWith('.pdf');
+        const pdfBadge = isPdf ? ' <span class="badge" style="background:#e74c3c;font-size:10px;">PDF</span>' : '';
+        return `
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 ${selectedTplIds.has(t.id) ? 'border-primary' : ''}" style="position:relative;" onclick="toggleSelectTpl(${t.id}, this)">
+                <div style="position:absolute;top:8px;right:8px;z-index:2;">
+                    <input type="checkbox" class="form-check-input tpl-check" ${selectedTplIds.has(t.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelectTpl(${t.id}, this.closest('.card'))">
+                </div>
+                <div class="card-body">
+                    <h6 class="card-title">${t.name}${pdfBadge}</h6>
+                    <span class="badge bg-secondary">${t.category}</span>
+                    <p class="card-text mt-2"><small>${t.notes || ''}</small></p>
+                    <small class="text-muted"><i class="bi bi-calendar3"></i> ${t.updated_at ? t.updated_at.split(' ')[0] : ''}</small>
+                </div>
+                <div class="card-footer bg-transparent border-top-0 text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewTemplate(${t.id})"><i class="bi bi-eye"></i> 查看</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); editTemplate(${t.id})"><i class="bi bi-pencil"></i> 编辑</button>
+                    <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); downloadTemplate(${t.id})" title="${isPdf ? '下载PDF' : '下载Word'}"><i class="bi bi-download"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTemplate(${t.id})"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        </div>
+    `}).join('');
+}
+
+function filterTemplates(category, btn) {
+    currentTplCategory = category;
+    btn.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadTemplates();
+}
+
+function showTemplateModal() {
+    editingTplId = null;
+    _uploadedFilePath = '';
+    _uploadedIsPdf = false;
+    document.getElementById('tplModalTitle').textContent = '新建文书模板';
+    document.getElementById('tplForm').reset();
+    document.getElementById('tpl-edit-id').value = '';
+    // 重置上传区域
+    document.getElementById('tpl-upload-section').style.display = '';
+    document.getElementById('tpl-upload-zone').innerHTML = `<i class="bi bi-file-earmark-word" style="font-size:28px;color:var(--accent);"></i><i class="bi bi-file-earmark-pdf" style="font-size:28px;color:#e74c3c;margin-left:8px;"></i><div class="mt-1"><small class="text-muted">点击上传 .docx 或 .pdf 文件，自动提取内容到下方编辑区</small></div>`;
+    new bootstrap.Modal(document.getElementById('templateModal')).show();
+}
+
+async function viewTemplate(id) {
+    const res = await axios.get(`/api/templates/${id}`);
+    const t = res.data;
+    const isPdf = t.file_path && t.file_path.endsWith('.pdf');
+
+    let bodyHtml = '';
+    if (isPdf) {
+        // PDF模板：iframe预览 + 文本内容折叠
+        bodyHtml = `
+            <span class="badge bg-secondary mb-2">${t.category} <span class="badge" style="background:#e74c3c;font-size:10px;">PDF</span></span>
+            <div class="border rounded mb-3" style="height:500px;">
+                <iframe src="/api/templates/${t.id}/preview-pdf" style="width:100%;height:100%;border:none;"></iframe>
+            </div>
+            <details>
+                <summary class="text-muted" style="cursor:pointer;font-size:13px;">查看提取的文本内容</summary>
+                <div class="border rounded p-3 bg-light mt-2" style="font-family: monospace; white-space: pre-wrap; max-height:300px; overflow-y:auto;">${t.content.replace(/\n/g, '<br>')}</div>
+            </details>
+            ${t.notes ? `<div class="mt-3"><small class="text-muted">使用说明: ${t.notes}</small></div>` : ''}
+        `;
+    } else {
+        const content = t.content.replace(/\n/g, '<br>');
+        bodyHtml = `
+            <span class="badge bg-secondary mb-2">${t.category}</span>
+            <div class="border rounded p-3 bg-light" style="font-family: monospace; white-space: pre-wrap;">${content}</div>
+            ${t.notes ? `<div class="mt-3"><small class="text-muted">使用说明: ${t.notes}</small></div>` : ''}
+        `;
+    }
+
+    const downloadBtnText = isPdf ? '<i class="bi bi-download"></i> 下载PDF' : '<i class="bi bi-download"></i> 下载Word';
+    const modalHtml = `
+        <div class="modal fade" id="viewTplModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${t.name}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${bodyHtml}
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-accent" onclick="downloadTemplate(${t.id})">${downloadBtnText}</button>
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.querySelectorAll('#viewTplModal').forEach(e => e.remove());
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('viewTplModal')).show();
+}
+
+async function editTemplate(id) {
+    editingTplId = id;
+    document.getElementById('tplModalTitle').textContent = '编辑文书模板';
+    const res = await axios.get(`/api/templates/${id}`);
+    const t = res.data;
+    document.getElementById('tpl-edit-id').value = t.id;
+    document.getElementById('tpl-name').value = t.name;
+    document.getElementById('tpl-category').value = t.category;
+    document.getElementById('tpl-content').value = t.content;
+    document.getElementById('tpl-notes').value = t.notes || '';
+    // 编辑时隐藏上传区域
+    document.getElementById('tpl-upload-section').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('templateModal')).show();
+}
+
+async function saveTemplate() {
+    const data = {
+        name: document.getElementById('tpl-name').value,
+        category: document.getElementById('tpl-category').value,
+        content: document.getElementById('tpl-content').value,
+        notes: document.getElementById('tpl-notes').value,
+        file_path: _uploadedFilePath,
+    };
+    if (editingTplId) {
+        await axios.put(`/api/templates/${editingTplId}`, data);
+    } else {
+        await axios.post('/api/templates', data);
+    }
+    _uploadedFilePath = '';
+    _uploadedIsPdf = false;
+    bootstrap.Modal.getInstance(document.getElementById('templateModal')).hide();
+    loadTemplates();
+}
+
+async function deleteTemplate(id) {
+    if (!confirm('确认删除此模板？')) return;
+    await axios.delete(`/api/templates/${id}`);
+    loadTemplates();
+}
+
+function downloadTemplate(id) {
+    window.open(`/api/templates/${id}/download`, '_blank');
+}
+
+// 上传文件解析内容
+async function handleTplFileUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'docx' && ext !== 'pdf') {
+        alert('仅支持 .docx 和 .pdf 格式文件');
+        input.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const zone = document.getElementById('tpl-upload-zone');
+        zone.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div> <small>正在解析...</small>';
+
+        const res = await axios.post('/api/templates/parse-upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        if (res.data.success) {
+            // 自动填充名称和内容
+            const nameEl = document.getElementById('tpl-name');
+            if (!nameEl.value) {
+                nameEl.value = res.data.name;
+            }
+            document.getElementById('tpl-content').value = res.data.content;
+            // 存储上传文件信息
+            _uploadedFilePath = res.data.saved_path || '';
+            _uploadedIsPdf = res.data.is_pdf || false;
+            const fileType = _uploadedIsPdf ? 'PDF' : 'Word';
+            zone.innerHTML = `<i class="bi bi-${_uploadedIsPdf ? 'file-earmark-pdf' : 'file-earmark-word'}" style="font-size:28px;color:${_uploadedIsPdf ? '#e74c3c' : 'var(--success)'};"></i><div class="mt-1"><small class="text-success">已成功导入${fileType}文件「${file.name}」</small></div>`;
+        }
+    } catch(e) {
+        const msg = e.response?.data?.error || e.message;
+        alert('文件解析失败: ' + msg);
+        document.getElementById('tpl-upload-zone').innerHTML = `<i class="bi bi-file-earmark-word" style="font-size:28px;color:var(--accent);"></i><i class="bi bi-file-earmark-pdf" style="font-size:28px;color:#e74c3c;margin-left:8px;"></i><div class="mt-1"><small class="text-muted">点击上传 .docx 或 .pdf 文件，自动提取内容到下方编辑区</small></div>`;
+    }
+    input.value = '';
+}
+
+loadTemplates();
+</script>
+{% endblock %}
