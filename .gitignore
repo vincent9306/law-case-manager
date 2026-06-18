@@ -1,0 +1,40 @@
+# Data
+data/cases.db
+data/cases.db-journal
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+instance/
+
+# Build
+build/
+dist/
+*.spec.bak
+案件管理系统.spec
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
+*.tar.gz
+*.7z
+
+# Compiled binaries
+案件管理系统
+案件管理系统.exe
