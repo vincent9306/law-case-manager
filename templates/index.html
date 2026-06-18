@@ -1,0 +1,552 @@
+{% extends "base.html" %}
+{% block title %}系统首页 - 个人案件管理系统{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-house-door"></i> 系统首页</h2>
+    <div>
+        <button class="btn btn-accent" onclick="location.href='/cases'">
+            <i class="bi bi-plus-circle"></i> 新建案件
+        </button>
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row" id="stat-cards">
+    <div class="col-md-3">
+        <div class="card stat-card" onclick="location.href='/cases'">
+            <div class="stat-icon" style="color: var(--accent);"><i class="bi bi-folder2-open"></i></div>
+            <div class="stat-number" id="total-cases">0</div>
+            <div class="stat-label">总案件数</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" onclick="location.href='/cases'">
+            <div class="stat-icon" style="color: var(--success);"><i class="bi bi-arrow-repeat"></i></div>
+            <div class="stat-number" id="active-cases">0</div>
+            <div class="stat-label">进行中（合计）</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" onclick="location.href='/todos'">
+            <div class="stat-icon" style="color: var(--warning);"><i class="bi bi-check2-square"></i></div>
+            <div class="stat-number" id="pending-todos">0</div>
+            <div class="stat-label">待办事项</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" onclick="location.href='/statistics'">
+            <div class="stat-icon" style="color: var(--danger);"><i class="bi bi-exclamation-triangle"></i></div>
+            <div class="stat-number" id="overdue-todos">0</div>
+            <div class="stat-label">逾期待办</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 近期待办 -->
+    <div class="col-md-5">
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="card-title mb-0"><i class="bi bi-clock"></i> 近期待办</h6>
+                    <button class="btn btn-sm btn-accent" onclick="showAddTodoModal()"><i class="bi bi-plus"></i> 添加待办</button>
+                </div>
+                <div id="upcoming-todos" style="max-height: 420px; overflow-y: auto;">
+                    <p class="text-muted text-center">暂无待办事项</p>
+                </div>
+            </div>
+        </div>
+        <!-- 常用法院文书 -->
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="card-title mb-0"><i class="bi bi-file-earmark-text"></i> 文书模版</h6>
+                </div>
+                <div id="court-docs-list" style="max-height: 420px; overflow-y: auto;">
+                    <p class="text-muted text-center py-2">暂无文书模版</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 日历 -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(-1)"><i class="bi bi-chevron-left"></i></button>
+                    <h6 class="card-title mb-0" id="calendar-title"></h6>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(1)"><i class="bi bi-chevron-right"></i></button>
+                </div>
+                <div id="calendar-grid"></div>
+                <div id="calendar-day-detail" style="display:none;" class="mt-3 pt-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="bi bi-list-check"></i> <span id="detail-date-label"></span></h6>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="closeDayDetail()"><i class="bi bi-x"></i></button>
+                    </div>
+                    <div id="detail-todo-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速添加待办弹窗 -->
+<div class="modal fade" id="addTodoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 快速添加待办</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">待办标题 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="modal-todo-title" placeholder="如：准备证据材料、提交答辩状..." autofocus>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">关联案件</label>
+                        <select class="form-select" id="modal-todo-case">
+                            <option value="">不关联案件</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">截止日期</label>
+                        <input type="date" class="form-control" id="modal-todo-deadline">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">优先级</label>
+                        <select class="form-select" id="modal-todo-priority">
+                            <option value="普通">普通</option>
+                            <option value="重要">重要</option>
+                            <option value="紧急">紧急</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">描述</label>
+                    <textarea class="form-control" id="modal-todo-desc" rows="2" placeholder="可选：待办详细说明"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-accent" onclick="saveTodoFromModal()"><i class="bi bi-check-lg"></i> 添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 日历样式 */
+.cal-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.cal-table th { text-align: center; padding: 6px 0; font-size: 12px; color: #888; font-weight: 500; }
+.cal-table td { text-align: center; padding: 0; vertical-align: top; height: 56px; border: 1px solid #eee; position: relative; cursor: pointer; transition: background .15s; }
+.cal-table td:hover { background: #f0f6ff; }
+.cal-table td.other-month { color: #ccc; }
+.cal-table td.today { background: #e8f4fd; }
+.cal-table td.today .cal-day { font-weight: 700; color: var(--accent); }
+.cal-table td.selected { background: #d0e7ff !important; }
+.cal-table td.has-todo::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; }
+.cal-table td.has-urgent::after { background: var(--danger); }
+.cal-table td.has-important::after { background: var(--warning); }
+.cal-table td.has-normal::after { background: var(--accent); }
+.cal-day { font-size: 13px; line-height: 36px; display: block; }
+.cal-dots { position: absolute; bottom: 3px; left: 0; right: 0; display: flex; justify-content: center; gap: 2px; }
+.cal-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+
+/* 近期待办高亮选中 */
+.todo-item-highlight { background: #e8f4fd !important; border-radius: 6px; }
+
+/* 日历当天详情 */
+#calendar-day-detail .detail-todo-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 10px; margin-bottom: 4px; border-radius: 6px; background: #f8f9fa;
+}
+#calendar-day-detail .detail-todo-item:hover { background: #eef5fc; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ===================== 全局状态 =====================
+let currentYear, currentMonth; // 日历当前年月
+let allTodos = [];             // 所有未完成待办
+let selectedDate = null;       // 日历选中的日期
+
+// ===================== 加载首页 =====================
+async function loadDashboard() {
+    try {
+        const res = await axios.get('/api/statistics/overview');
+        const data = res.data;
+        document.getElementById('total-cases').textContent = data.total_cases;
+        document.getElementById('active-cases').textContent = data.active_cases;
+        document.getElementById('pending-todos').textContent = data.pending_todos;
+        document.getElementById('overdue-todos').textContent = data.overdue_todos;
+
+        // 近期待办
+        renderUpcomingTodos(data.upcoming_todos);
+
+        // 加载常用法院文书
+        await loadCourtDocs();
+
+        // 加载全部待办（给日历用）
+        await loadAllTodos();
+
+        // 加载案件列表到待办弹窗的下拉框
+        await loadCasesForTodoModal();
+    } catch(e) {
+        console.error('加载首页数据失败', e);
+    }
+}
+
+// ===================== 加载所有待办 =====================
+async function loadAllTodos() {
+    try {
+        const res = await axios.get('/api/todos?status=待办');
+        allTodos = res.data || [];
+        // 也加载进行中的
+        const res2 = await axios.get('/api/todos?status=进行中');
+        allTodos = allTodos.concat(res2.data || []);
+        renderCalendar();
+    } catch(e) {
+        console.error('加载待办数据失败', e);
+    }
+}
+
+// ===================== 常用法院文书 =====================
+async function loadCourtDocs() {
+    try {
+        const res = await axios.get('/api/templates', { params: { category: '常用法院文书' } });
+        const container = document.getElementById('court-docs-list');
+        if (!res.data || res.data.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-2">暂无文书模版</p>';
+            return;
+        }
+        container.innerHTML = '<div class="d-flex flex-wrap gap-2">' + res.data.map(t => `
+            <button class="btn btn-sm btn-outline-secondary" onclick="viewCourtDoc(${t.id})" style="border-radius:20px;font-size:13px;">
+                <i class="bi bi-file-earmark-text"></i> ${t.name}
+            </button>
+        `).join('') + `
+            <a class="btn btn-sm btn-outline-secondary" href="/templates" style="border-radius:20px;font-size:13px;">
+                <i class="bi bi-chevron-right"></i> 查看全部
+            </a>
+        </div>`;
+    } catch(e) {
+        console.error('加载常用法院文书失败', e);
+    }
+}
+
+async function viewCourtDoc(id) {
+    const res = await axios.get(`/api/templates/${id}`);
+    const t = res.data;
+    const isPdf = t.file_path && t.file_path.endsWith('.pdf');
+
+    let bodyHtml = '';
+    if (isPdf) {
+        bodyHtml = `
+            <span class="badge bg-secondary mb-2">${t.category} <span class="badge" style="background:#e74c3c;font-size:10px;">PDF</span></span>
+            <div class="border rounded mb-3" style="height:500px;">
+                <iframe src="/api/templates/${t.id}/preview-pdf" style="width:100%;height:100%;border:none;"></iframe>
+            </div>
+            ${t.notes ? `<div class="mt-3"><small class="text-muted">使用说明: ${t.notes}</small></div>` : ''}
+        `;
+    } else {
+        const content = t.content.replace(/\n/g, '<br>');
+        bodyHtml = `
+            <span class="badge bg-secondary mb-2">${t.category}</span>
+            <div class="border rounded p-3 bg-light" style="font-family: monospace; white-space: pre-wrap;">${content}</div>
+            ${t.notes ? `<div class="mt-3"><small class="text-muted">使用说明: ${t.notes}</small></div>` : ''}
+        `;
+    }
+
+    const downloadBtnText = isPdf ? '<i class="bi bi-download"></i> 下载PDF' : '<i class="bi bi-download"></i> 下载Word';
+    const modalHtml = `
+        <div class="modal fade" id="viewCourtDocModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header" style="background:var(--primary);color:#fff;">
+                        <h5 class="modal-title"><i class="bi bi-building"></i> ${t.name}</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${bodyHtml}
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-accent" onclick="window.open('/api/templates/${t.id}/download','_blank')">${downloadBtnText}</button>
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.querySelectorAll('#viewCourtDocModal').forEach(e => e.remove());
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('viewCourtDocModal')).show();
+}
+
+// ===================== 近期待办列表 =====================
+function renderUpcomingTodos(todos) {
+    const container = document.getElementById('upcoming-todos');
+    if (!todos || todos.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center py-3">暂无待办事项</p>';
+        return;
+    }
+    container.innerHTML = todos.map(t => `
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom todo-item-row" data-date="${t.deadline || ''}" data-id="${t.id}">
+            <div class="d-flex align-items-center flex-grow-1" style="min-width:0;">
+                <span class="badge-status badge-${t.priority} me-2 flex-shrink-0">${t.priority}</span>
+                <span class="text-truncate" style="max-width:180px;" title="${t.title}">${t.title}</span>
+                ${t.case_name ? `<small class="text-muted ms-2 text-truncate" style="max-width:100px;">[${t.case_name}]</small>` : ''}
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                <small class="text-muted">${t.deadline || '无期限'}</small>
+                <button class="btn btn-sm btn-outline-success p-0 px-1" onclick="completeTodoFromDashboard(${t.id})" title="标记完成"><i class="bi bi-check2"></i></button>
+            </div>
+        </div>
+    `).join('');
+
+    // 点击待办项联动日历
+    container.querySelectorAll('.todo-item-row').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return; // 不拦截按钮点击
+            const date = row.dataset.date;
+            if (date) {
+                jumpToDate(date);
+            }
+        });
+    });
+}
+
+// ===================== 日历 =====================
+function renderCalendar() {
+    const now = new Date();
+    if (!currentYear) { currentYear = now.getFullYear(); currentMonth = now.getMonth(); }
+
+    const titleEl = document.getElementById('calendar-title');
+    const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    titleEl.textContent = `${currentYear}年 ${monthNames[currentMonth]}`;
+
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay(); // 0=周日
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
+
+    // 获取当月待办映射 { 'YYYY-MM-DD': [todos] }
+    const todoMap = {};
+    allTodos.forEach(t => {
+        if (t.deadline) {
+            if (!todoMap[t.deadline]) todoMap[t.deadline] = [];
+            todoMap[t.deadline].push(t);
+        }
+    });
+
+    const todayStr = formatDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayNames = ['日','一','二','三','四','五','六'];
+
+    let html = '<table class="cal-table"><thead><tr>';
+    dayNames.forEach(d => html += `<th>${d}</th>`);
+    html += '</tr></thead><tbody>';
+
+    let dayCount = 1;
+    let nextMonthDay = 1;
+    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+    for (let i = 0; i < totalCells; i++) {
+        if (i % 7 === 0) html += '<tr>';
+        if (i < firstDay) {
+            // 上月日期
+            const d = prevMonthDays - firstDay + 1 + i;
+            html += `<td class="other-month"><span class="cal-day">${d}</span></td>`;
+        } else if (dayCount > daysInMonth) {
+            // 下月日期
+            html += `<td class="other-month"><span class="cal-day">${nextMonthDay}</span></td>`;
+            nextMonthDay++;
+        } else {
+            const d = dayCount;
+            const dateStr = formatDateStr(currentYear, currentMonth, d);
+            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === selectedDate;
+            const todosThisDay = todoMap[dateStr] || [];
+
+            let classes = [];
+            if (isToday) classes.push('today');
+            if (isSelected) classes.push('selected');
+            if (todosThisDay.length > 0) classes.push('has-todo');
+
+            // 判断最高优先级
+            if (todosThisDay.some(t => t.priority === '紧急')) classes.push('has-urgent');
+            else if (todosThisDay.some(t => t.priority === '重要')) classes.push('has-important');
+            else if (todosThisDay.length > 0) classes.push('has-normal');
+
+            // 生成小圆点
+            let dots = '';
+            if (todosThisDay.length > 0) {
+                dots = '<div class="cal-dots">';
+                const shown = todosThisDay.slice(0, 4);
+                shown.forEach(t => {
+                    const color = t.priority === '紧急' ? 'var(--danger)' : t.priority === '重要' ? 'var(--warning)' : 'var(--accent)';
+                    dots += `<span class="cal-dot" style="background:${color}"></span>`;
+                });
+                if (todosThisDay.length > 4) dots += `<span style="font-size:9px;color:#999;">+${todosThisDay.length - 4}</span>`;
+                dots += '</div>';
+            }
+
+            html += `<td class="${classes.join(' ')}" onclick="selectCalendarDate('${dateStr}')">`;
+            html += `<span class="cal-day">${d}</span>${dots}</td>`;
+            dayCount++;
+        }
+        if (i % 7 === 6) html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    document.getElementById('calendar-grid').innerHTML = html;
+}
+
+function formatDateStr(y, m, d) {
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    selectedDate = null;
+    document.getElementById('calendar-day-detail').style.display = 'none';
+    renderCalendar();
+}
+
+function selectCalendarDate(dateStr) {
+    selectedDate = dateStr;
+    renderCalendar();
+    showDayDetail(dateStr);
+    // 联动：高亮近期待办中对应日期的项
+    highlightTodosByDate(dateStr);
+}
+
+function showDayDetail(dateStr) {
+    const detailPanel = document.getElementById('calendar-day-detail');
+    const detailList = document.getElementById('detail-todo-list');
+    const dateLabel = document.getElementById('detail-date-label');
+
+    const todos = allTodos.filter(t => t.deadline === dateStr);
+    const [y, m, d] = dateStr.split('-');
+    dateLabel.textContent = `${parseInt(m)}月${parseInt(d)}日 待办事项`;
+
+    if (todos.length === 0) {
+        detailList.innerHTML = '<p class="text-muted mb-0" style="font-size:13px;">当日暂无待办</p>';
+    } else {
+        detailList.innerHTML = todos.map(t => {
+            const priorityColor = t.priority === '紧急' ? 'var(--danger)' : t.priority === '重要' ? 'var(--warning)' : 'var(--accent)';
+            return `<div class="detail-todo-item">
+                <div class="d-flex align-items-center" style="min-width:0;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${priorityColor};display:inline-block;margin-right:8px;flex-shrink:0;"></span>
+                    <span class="text-truncate" style="max-width:220px;">${t.title}</span>
+                    ${t.case_name ? `<small class="text-muted ms-2">[${t.case_name}]</small>` : ''}
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge-status badge-${t.priority}">${t.priority}</span>
+                    <button class="btn btn-sm btn-outline-success p-0 px-1" onclick="completeTodoFromDashboard(${t.id})" title="完成"><i class="bi bi-check2"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    detailPanel.style.display = 'block';
+}
+
+function closeDayDetail() {
+    selectedDate = null;
+    document.getElementById('calendar-day-detail').style.display = 'none';
+    renderCalendar();
+    clearTodoHighlight();
+}
+
+// 从近期待办点击 → 跳转日历到对应月份并选中
+function jumpToDate(dateStr) {
+    const [y, m] = dateStr.split('-');
+    currentYear = parseInt(y);
+    currentMonth = parseInt(m) - 1;
+    selectedDate = dateStr;
+    renderCalendar();
+    showDayDetail(dateStr);
+    highlightTodosByDate(dateStr);
+}
+
+// 高亮近期待办列表中对应日期的项
+function highlightTodosByDate(dateStr) {
+    clearTodoHighlight();
+    document.querySelectorAll('.todo-item-row').forEach(row => {
+        if (row.dataset.date === dateStr) {
+            row.classList.add('todo-item-highlight');
+        }
+    });
+}
+
+function clearTodoHighlight() {
+    document.querySelectorAll('.todo-item-highlight').forEach(el => el.classList.remove('todo-item-highlight'));
+}
+
+// ===================== 快速添加待办 =====================
+
+async function loadCasesForTodoModal() {
+    try {
+        const res = await axios.get('/api/cases');
+        const select = document.getElementById('modal-todo-case');
+        // 保留第一个"不关联案件"选项
+        select.innerHTML = '<option value="">不关联案件</option>';
+        res.data.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.case_name + (c.case_number ? ` (${c.case_number})` : '');
+            select.appendChild(opt);
+        });
+    } catch(e) {
+        console.error('加载案件列表失败', e);
+    }
+}
+
+function showAddTodoModal() {
+    // 重置表单
+    document.getElementById('modal-todo-title').value = '';
+    document.getElementById('modal-todo-case').value = '';
+    document.getElementById('modal-todo-deadline').value = '';
+    document.getElementById('modal-todo-priority').value = '普通';
+    document.getElementById('modal-todo-desc').value = '';
+    new bootstrap.Modal(document.getElementById('addTodoModal')).show();
+}
+
+async function saveTodoFromModal() {
+    const title = document.getElementById('modal-todo-title').value.trim();
+    if (!title) {
+        alert('请输入待办标题');
+        return;
+    }
+    const payload = {
+        title: title,
+        deadline: document.getElementById('modal-todo-deadline').value || null,
+        priority: document.getElementById('modal-todo-priority').value,
+        description: document.getElementById('modal-todo-desc').value,
+    };
+    const caseId = document.getElementById('modal-todo-case').value;
+    if (caseId) {
+        payload.case_id = parseInt(caseId);
+    }
+    try {
+        await axios.post('/api/todos', payload);
+        bootstrap.Modal.getInstance(document.getElementById('addTodoModal')).hide();
+        loadDashboard(); // 刷新首页
+    } catch(e) {
+        alert('添加失败: ' + (e.response?.data?.message || e.message));
+    }
+}
+
+async function completeTodoFromDashboard(todoId) {
+    if (!confirm('确认标记为已完成？')) return;
+    await axios.put(`/api/todos/${todoId}`, { status: '已完成' });
+    loadDashboard();
+}
+
+loadDashboard();
+</script>
+{% endblock %}
