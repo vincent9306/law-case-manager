@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}待办事项 - 个人案件管理系统{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-check2-square"></i> 待办事项</h2>
+    <button class="btn btn-accent" onclick="showTodoModal()">
+        <i class="bi bi-plus-circle"></i> 新建待办
+    </button>
+</div>
+
+<!-- 状态筛选 -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <button class="btn btn-outline-secondary active" onclick="filterTodos('', this)">全部</button>
+            <button class="btn btn-outline-secondary" onclick="filterTodos('待办', this)">待办</button>
+            <button class="btn btn-outline-secondary" onclick="filterTodos('进行中', this)">进行中</button>
+            <button class="btn btn-outline-secondary" onclick="filterTodos('已完成', this)">已完成</button>
+        </div>
+    </div>
+</div>
+
+<!-- 待办列表 -->
+<div class="card">
+    <div class="card-body" id="todo-list">
+        <p class="text-muted text-center py-4">暂无待办事项</p>
+    </div>
+</div>
+
+<!-- 新建待办弹窗 -->
+<div class="modal fade" id="todoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新建待办事项</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="todoForm">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">待办标题 *</label>
+                            <input type="text" class="form-control" id="td-title" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">关联案件</label>
+                            <select class="form-select" id="td-case"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">优先级</label>
+                            <select class="form-select" id="td-priority">
+                                <option value="普通">普通</option>
+                                <option value="重要">重要</option>
+                                <option value="紧急">紧急</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">截止日期</label>
+                            <input type="date" class="form-control" id="td-deadline">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">提醒日期</label>
+                            <input type="date" class="form-control" id="td-reminder">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">描述</label>
+                            <textarea class="form-control" id="td-desc" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-accent" onclick="saveTodoModal()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentFilter = '';
+
+async function loadTodos() {
+    const res = await axios.get('/api/todos', { params: { status: currentFilter } });
+    const el = document.getElementById('todo-list');
+    if (res.data.length === 0) {
+        el.innerHTML = '<p class="text-muted text-center py-4">暂无待办事项</p>';
+        return;
+    }
+    el.innerHTML = res.data.map(t => {
+        const isOverdue = t.deadline && t.status !== '已完成' && new Date(t.deadline) < new Date();
+        return `
+        <div class="d-flex justify-content-between align-items-center py-3 border-bottom ${isOverdue ? 'bg-light' : ''}">
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge-status badge-${t.priority}">${t.priority}</span>
+                    <span class="badge-status badge-${t.status === '已完成' ? '已完成' : t.status + '_todo'}">${t.status}</span>
+                    ${t.case_name ? `<small class="text-muted"><i class="bi bi-folder2"></i> ${t.case_name}</small>` : ''}
+                    ${isOverdue ? '<small class="text-danger"><i class="bi bi-exclamation-triangle"></i> 逾期</small>' : ''}
+                </div>
+                <div class="mt-1 ${t.status === '已完成' ? 'text-decoration-line-through text-muted' : ''}">
+                    ${t.title}
+                    ${t.deadline ? `<small class="text-muted ms-2">截止: ${t.deadline}</small>` : ''}
+                </div>
+                ${t.description ? `<small class="text-muted">${t.description}</small>` : ''}
+            </div>
+            <div class="d-flex gap-1">
+                ${t.status !== '已完成' ? `<button class="btn btn-sm btn-outline-success" onclick="completeTodo(${t.id})" title="标记完成"><i class="bi bi-check2"></i></button>` : ''}
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteTodo(${t.id})" title="删除"><i class="bi bi-trash"></i></button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function filterTodos(status, btn) {
+    currentFilter = status;
+    // Update button active state
+    btn.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadTodos();
+}
+
+async function showTodoModal() {
+    document.getElementById('todoForm').reset();
+    // Load cases for dropdown
+    const res = await axios.get('/api/cases');
+    const sel = document.getElementById('td-case');
+    sel.innerHTML = '<option value="">无（通用待办）option>' + res.data.map(c => `<option value="${c.id}">${c.case_name}</option>`).join('');
+    new bootstrap.Modal(document.getElementById('todoModal')).show();
+}
+
+async function saveTodoModal() {
+    const data = {
+        title: document.getElementById('td-title').value,
+        case_id: document.getElementById('td-case').value || null,
+        priority: document.getElementById('td-priority').value,
+        deadline: document.getElementById('td-deadline').value,
+        reminder_date: document.getElementById('td-reminder').value,
+        description: document.getElementById('td-desc').value,
+    };
+    await axios.post('/api/todos', data);
+    bootstrap.Modal.getInstance(document.getElementById('todoModal')).hide();
+    loadTodos();
+}
+
+async function completeTodo(id) {
+    await axios.put(`/api/todos/${id}`, { status: '已完成' });
+    loadTodos();
+}
+
+async function deleteTodo(id) {
+    if (!confirm('确认删除此待办？')) return;
+    await axios.delete(`/api/todos/${id}`);
+    loadTodos();
+}
+
+loadTodos();
+</script>
+{% endblock %}
