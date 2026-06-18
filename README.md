@@ -37,14 +37,14 @@
 ### 方式一：独立可执行文件（推荐，无需安装 Python）
 
 #### Mac
-1. [下载 `案件管理系统-mac.zip`](https://github.com/vincent9306/law-case-manager/releases) 并解压
+1. [下载 `case-manager-macOS.zip`](https://github.com/vincent9306/law-case-manager/releases/download/v1.1.0/case-manager-macOS.zip) 并解压
 2. 双击 `启动.command` 即可运行
 3. 首次运行可能需要在「系统设置 → 隐私与安全性」中允许
 
 #### Windows
-1. [下载 `案件管理系统-windows.zip`](https://github.com/vincent9306/law-case-manager/releases) 并解压
-2. 双击 `启动.bat` 即可运行
-3. 如被杀毒软件拦截，请添加信任
+1. [下载源码](https://github.com/vincent9306/law-case-manager/archive/refs/heads/main.zip) 并解压
+2. 双击 `Windows一键打包.bat` 自动打包
+3. 打包完成后进入 `dist/案件管理系统/`，双击 `启动.bat` 运行
 
 ### 方式二：源码运行（需要 Python）
 
