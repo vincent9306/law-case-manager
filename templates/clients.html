@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}客户管理 - 个人案件管理系统{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-people"></i> 客户管理</h2>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-success" onclick="exportClients()">
+            <i class="bi bi-file-excel"></i> 导出Excel
+        </button>
+        <button class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#clientModal" onclick="resetClientForm()">
+            <i class="bi bi-plus-circle"></i> 新建客户
+        </button>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" class="form-control" id="search-client" placeholder="搜索客户姓名、电话、证件号" oninput="loadClients()">
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>姓名/名称</th>
+                    <th>类型</th>
+                    <th>电话</th>
+                    <th>邮箱</th>
+                    <th>证件号</th>
+                    <th>关联案件</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="clients-table">
+                <tr><td colspan="7" class="text-center text-muted py-4">暂无客户记录</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新建/编辑客户弹窗 -->
+<div class="modal fade" id="clientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clientModalTitle">新建客户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="clientForm">
+                    <input type="hidden" id="client-edit-id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">姓名/名称 *</label>
+                            <input type="text" class="form-control" id="cl-name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">类型</label>
+                            <select class="form-select" id="cl-type">
+                                <option value="个人">个人</option>
+                                <option value="企业">企业</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">电话</label>
+                            <input type="text" class="form-control" id="cl-phone">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">邮箱</label>
+                            <input type="email" class="form-control" id="cl-email">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">证件号</label>
+                            <input type="text" class="form-control" id="cl-id-number">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">地址</label>
+                            <input type="text" class="form-control" id="cl-address">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">备注</label>
+                            <textarea class="form-control" id="cl-notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-accent" onclick="saveClient()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let editingClientId = null;
+
+function exportClients() {
+    const keyword = document.getElementById('search-client').value;
+    let url = '/api/clients/export';
+    if (keyword) {
+        url += `?keyword=${encodeURIComponent(keyword)}`;
+    }
+    window.location.href = url;
+}
+
+async function loadClients() {
+    const keyword = document.getElementById('search-client').value;
+    const res = await axios.get('/api/clients', { params: { keyword } });
+    const tbody = document.getElementById('clients-table');
+    if (res.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">暂无客户</td></tr>';
+        return;
+    }
+    tbody.innerHTML = res.data.map(c => `
+        <tr>
+            <td><strong>${c.name}</strong></td>
+            <td>${c.type}</td>
+            <td>${c.phone || '-'}</td>
+            <td>${c.email || '-'}</td>
+            <td><small>${c.id_number || '-'}</small></td>
+            <td><button class="btn btn-sm btn-outline-info" onclick="viewClientCases(${c.id})">查看案件</button></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editClient(${c.id})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteClient(${c.id})"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function resetClientForm() {
+    editingClientId = null;
+    document.getElementById('clientModalTitle').textContent = '新建客户';
+    document.getElementById('clientForm').reset();
+    document.getElementById('client-edit-id').value = '';
+}
+
+async function editClient(id) {
+    editingClientId = id;
+    document.getElementById('clientModalTitle').textContent = '编辑客户';
+    const res = await axios.get(`/api/clients/${id}`);
+    const c = res.data;
+    document.getElementById('client-edit-id').value = c.id;
+    document.getElementById('cl-name').value = c.name;
+    document.getElementById('cl-type').value = c.type;
+    document.getElementById('cl-phone').value = c.phone || '';
+    document.getElementById('cl-email').value = c.email || '';
+    document.getElementById('cl-id-number').value = c.id_number || '';
+    document.getElementById('cl-address').value = c.address || '';
+    document.getElementById('cl-notes').value = c.notes || '';
+    new bootstrap.Modal(document.getElementById('clientModal')).show();
+}
+
+async function saveClient() {
+    const data = {
+        name: document.getElementById('cl-name').value,
+        type: document.getElementById('cl-type').value,
+        phone: document.getElementById('cl-phone').value,
+        email: document.getElementById('cl-email').value,
+        id_number: document.getElementById('cl-id-number').value,
+        address: document.getElementById('cl-address').value,
+        notes: document.getElementById('cl-notes').value,
+    };
+    if (editingClientId) {
+        await axios.put(`/api/clients/${editingClientId}`, data);
+    } else {
+        await axios.post('/api/clients', data);
+    }
+    bootstrap.Modal.getInstance(document.getElementById('clientModal')).hide();
+    loadClients();
+}
+
+async function deleteClient(id) {
+    if (!confirm('确认删除此客户？')) return;
+    await axios.delete(`/api/clients/${id}`);
+    loadClients();
+}
+
+async function viewClientCases(id) {
+    const res = await axios.get(`/api/clients/${id}/cases`);
+    if (res.data.length === 0) {
+        alert('该客户暂无关联案件');
+        return;
+    }
+    // 跳转到案件列表并筛选
+    location.href = '/cases';
+}
+
+loadClients();
+</script>
+{% endblock %}
