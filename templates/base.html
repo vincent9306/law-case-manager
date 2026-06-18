@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}个人案件管理系统{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4A1A6B;
+            --accent: #7B2D8E;
+            --accent-light: #9B4DB5;
+            --danger: #e74c3c;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --bg-light: #f8f9fa;
+            --sidebar-width: 220px;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-light);
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--primary);
+            color: #fff;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar .brand {
+            padding: 20px 15px;
+            font-size: 18px;
+            font-weight: 700;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+        .sidebar .brand i { font-size: 24px; color: var(--accent-light); }
+        .sidebar .nav-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+        }
+        .sidebar .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .sidebar .nav-item.active { background: var(--accent); color: #fff; }
+        .sidebar .nav-item i { font-size: 18px; width: 24px; text-align: center; }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 20px 25px;
+            min-height: 100vh;
+        }
+        .page-header {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .page-header h2 { font-size: 22px; color: var(--primary); margin: 0; }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card .stat-icon { font-size: 32px; margin-bottom: 8px; }
+        .stat-card .stat-number { font-size: 28px; font-weight: 700; }
+        .stat-card .stat-label { font-size: 13px; color: #6c757d; }
+        .table th { font-weight: 600; background: var(--bg-light); border-top: none; }
+        .badge-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-一审进行中 { background: #d4edda; color: #155724; }
+        .badge-一审已结案 { background: #cce5ff; color: #004085; }
+        .badge-二审进行中 { background: #d1ecf1; color: #0c5460; }
+        .badge-二审已结案 { background: #bee5eb; color: #0c5460; }
+        .badge-执行进行中 { background: #fff3cd; color: #856404; }
+        .badge-执行已终本 { background: #f8d7da; color: #721c24; }
+        .badge-执行完毕 { background: #e2e3e5; color: #383d41; }
+        .badge-已结案 { background: #6c757d; color: #ffffff; }
+        .badge-待办 { background: #fff3cd; color: #856404; }
+        .badge-进行中_todo { background: #d4edda; color: #155724; }
+        .badge-已完成 { background: #cce5ff; color: #004085; }
+        .badge-紧急 { background: #f8d7da; color: #721c24; }
+        .badge-重要 { background: #fff3cd; color: #856404; }
+        .badge-普通 { background: #e2e3e5; color: #383d41; }
+        .badge-未收费 { background: #f8d7da; color: #721c24; }
+        .badge-部分收费 { background: #fff3cd; color: #856404; }
+        .badge-已收费 { background: #d4edda; color: #155724; }
+        .badge-未开票 { background: #f8d7da; color: #721c24; }
+        .badge-部分开票 { background: #fff3cd; color: #856404; }
+        .badge-已开票 { background: #d4edda; color: #155724; }
+        .timeline-item {
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 15px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: -15px;
+            width: 2px;
+            background: #dee2e6;
+        }
+        .timeline-item:last-child::before { bottom: 50%; }
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 6px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+        }
+        .timeline-date { font-size: 12px; color: #6c757d; }
+        .timeline-title { font-size: 14px; font-weight: 600; }
+        .timeline-desc { font-size: 13px; color: #495057; }
+        .btn-accent {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+        }
+        .btn-accent:hover { background: var(--accent-light); color: #fff; }
+        .modal-header { background: var(--primary); color: #fff; }
+        .modal-header .btn-close { filter: invert(1); }
+        .form-label { font-weight: 600; font-size: 13px; }
+        .search-box {
+            position: relative;
+        }
+        .search-box input {
+            border-radius: 20px;
+            padding-left: 40px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 10px;
+            color: #adb5bd;
+        }
+        @media (max-width: 768px) {
+            .sidebar { width: 60px; }
+            .sidebar .brand span, .sidebar .nav-item span { display: none; }
+            .sidebar .nav-item { justify-content: center; }
+            .main-content { margin-left: 60px; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <nav class="sidebar">
+        <div class="brand" style="cursor:pointer;" onclick="location.href='/'">
+            <i class="bi bi-scale-2"></i>
+            <div>
+                <span>案件管理系统</span>
+                <div style="font-size:10px;opacity:0.5;font-weight:400;letter-spacing:0.5px;">Case Management System</div>
+            </div>
+        </div>
+        <div class="nav-item {% if request.path == '/' %}active{% endif %}" onclick="location.href='/'">
+            <i class="bi bi-house-door"></i><span>系统首页</span>
+        </div>
+        <div class="nav-item {% if '/cases' in request.path %}active{% endif %}" onclick="location.href='/cases'">
+            <i class="bi bi-folder2-open"></i><span>案件管理</span>
+        </div>
+        <div class="nav-item {% if request.path == '/clients' %}active{% endif %}" onclick="location.href='/clients'">
+            <i class="bi bi-people"></i><span>客户管理</span>
+        </div>
+        <div class="nav-item {% if request.path == '/todos' %}active{% endif %}" onclick="location.href='/todos'">
+            <i class="bi bi-check2-square"></i><span>待办事项</span>
+        </div>
+        <div class="nav-item {% if request.path == '/templates' %}active{% endif %}" onclick="location.href='/templates'">
+            <i class="bi bi-file-earmark-text"></i><span>文书模板</span>
+        </div>
+        <div class="nav-item {% if request.path == '/statistics' %}active{% endif %}" onclick="location.href='/statistics'">
+            <i class="bi bi-bar-chart-line"></i><span>数据统计</span>
+        </div>
+        <div style="padding: 20px 15px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto; font-size: 11px; color: rgba(255,255,255,0.5);">
+            <i class="bi bi-lock-fill"></i> 数据不上云 · 隐私优先
+            <br><span style="font-size:10px; opacity:0.7;">Developed by Yizhen Li from Beijing Dacheng Law Offices, LLP (Wuxi)</span>
+            <br><span style="font-size:10px; opacity:0.7;">最近更新时间：2026年6月18日</span>
+            <br><span style="font-size:10px; opacity:0.7;">Open Source Version 1.0</span>
+        </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.4.0/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
