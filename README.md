@@ -34,6 +34,11 @@
 
 ## 快速开始
 
+> 📖 **首次使用请先查看用户指南**：
+> - [Windows 用户指南（PDF）](https://github.com/vincent9306/law-case-manager/releases/download/v1.1.1/Windows.pdf)
+> - [macOS 用户指南（PDF）](https://github.com/vincent9306/law-case-manager/releases/download/v1.1.1/macOS.pdf)
+> - 或查看仓库中的 `WINDOWS_GUIDE.md` / `MAC_GUIDE.md`
+
 ### 方式一：独立可执行文件（推荐，无需安装 Python）
 
 #### Mac
@@ -149,6 +154,25 @@ rm data/cases.db && python seed.py && python app.py
 ### 数据迁移
 
 将 `data/` 目录完整复制到新机器即可。
+
+---
+
+## 版本历史
+
+### v1.1.1（2026-07-02）
+- 修复 Windows batch 文件编码问题（UTF-8 → GBK），解决乱码和命令错误
+- 新增 Windows 用户使用指南（Markdown + PDF）
+- 新增 macOS 用户使用指南（Markdown + PDF）
+- 更新 `install_windows.ps1` 脚本（改进编码处理）
+- 新增 6 张系统截图（已脱敏）
+
+### v1.1.0（2026-06-18）
+- 首次发布 macOS 独立可执行文件
+- 修复 PyInstaller 打包问题
+- 新增示例数据（seed.py）
+
+### v1.0.0（2026-06-17）
+- 初始版本发布
 
 ---
 
