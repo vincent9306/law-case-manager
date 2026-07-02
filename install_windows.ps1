@@ -176,13 +176,17 @@ Write-Host ""
 Write-Host "【步骤 5/5】创建启动脚本..." -ForegroundColor Yellow
 $startBatContent = @"
 @echo off
-chcp 65001 > nul
-echo 正在启动个人案件管理系统...
+echo ========================================
+echo   正在启动个人案件管理系统...
+echo   请勿关闭此窗口
+echo ========================================
+echo.
+echo   如未自动打开，请访问：http://127.0.0.1:5066
 echo.
 python app.py
 pause
 "@
-$startBatContent | Out-File -FilePath "start.bat" -Encoding UTF8
+$startBatContent | Out-File -FilePath "start.bat" -Encoding Default
 Write-Host "✅ 启动脚本创建完成" -ForegroundColor Green
 
 Write-Host ""
