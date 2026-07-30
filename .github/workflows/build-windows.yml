@@ -55,8 +55,23 @@ jobs:
           copy dist\case-manager.exe dist\release\
           copy USAGE.md dist\release\使用说明.md
           echo @echo off > dist\release\启动.bat
-          echo start case-manager.exe >> dist\release\启动.bat
-          echo echo 系统已启动，访问 http://127.0.0.1:5066 >> dist\release\启动.bat
+          echo title 案件管理系统 >> dist\release\启动.bat
+          echo cd /d "%%~dp0" >> dist\release\启动.bat
+          echo if not exist "data\uploads" mkdir "data\uploads" >> dist\release\启��.bat
+          echo echo. >> dist\release\启动.bat
+          echo echo ========================================== >> dist\release\启动.bat
+          echo echo   案件管理系统 ^(Windows 独立版^) >> dist\release\启动.bat
+          echo echo   本地部署 ^| 数据不上云 ^| 隐私优先 >> dist\release\启动.bat
+          echo echo ========================================== >> dist\release\启动.bat
+          echo echo. >> dist\release\启动.bat
+          echo echo   正在启动... >> dist\release\启动.bat
+          echo echo   请勿关闭此窗口 >> dist\release\启动.bat
+          echo echo. >> dist\release\启动.bat
+          echo start "" case-manager.exe >> dist\release\启动.bat
+          echo echo   系统已启动，浏览器访问 http://127.0.0.1:5066 >> dist\release\启动.bat
+          echo echo. >> dist\release\启��.bat
+          echo echo   按 Ctrl+C 停止服务 >> dist\release\启动.bat
+          echo echo ========================================== >> dist\release\启动.bat
           echo pause >> dist\release\启动.bat
 
       - name: 打包 ZIP

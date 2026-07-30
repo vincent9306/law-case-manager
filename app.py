@@ -1348,16 +1348,44 @@ def get_case_types():
 if __name__ == '__main__':
     import webbrowser
     import threading
+    import socket
+
+    PORT = 5066
+    HOST = '127.0.0.1'
+
+    # 检测端口是否已占用
+    def check_port(host, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex((host, port))
+        sock.close()
+        return result == 0
 
     print("\n" + "=" * 50)
     print("  个人案件管理系统")
     print("  本地部署 | 数据不上云 | 隐私优先")
     print("=" * 50)
 
+    if check_port(HOST, PORT):
+        print(f"\n  ⚠️  端口 {PORT} 已被占用，可能上次未正常关闭")
+        print(f"  请等待 30 秒后重试，或手动结束占用该端口的进程")
+        print(f"  按 Enter 键退出...")
+        input()
+        sys.exit(1)
+
     # 自动打开浏览器
     def open_browser():
-        webbrowser.open('http://127.0.0.1:5066')
+        try:
+            webbrowser.open(f'http://{HOST}:{PORT}')
+        except Exception:
+            pass
     threading.Timer(1.5, open_browser).start()
 
-    print(f"\n  请在浏览器中访问: http://127.0.0.1:5066\n")
-    app.run(host='127.0.0.1', port=5066, debug=False)
+    print(f"\n  请在浏览器中访问: http://{HOST}:{PORT}\n")
+
+    # 使用 werkzeug run_simple 支持 socket 选项，允许端口快速复用
+    try:
+        from werkzeug.serving import run_simple
+        run_simple(HOST, PORT, app, use_reloader=False, threaded=True)
+    except (ImportError, TypeError):
+        app.run(host=HOST, port=PORT, debug=False)
