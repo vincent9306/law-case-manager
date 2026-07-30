@@ -40,9 +40,10 @@ jobs:
 
       - name: PyInstaller 打包
         run: |
-          pyinstaller law-case-manager-windows.spec --clean --noconfirm --log-level=WARN
+          pyinstaller law-case-manager-windows.spec --clean --noconfirm --log-level=INFO
 
       - name: 验证 EXE
+        shell: cmd
         run: |
           if exist "dist\case-manager.exe" (echo ✅ EXE 生成成功) else (echo ❌ 失败 && exit 1)
           dir dist\case-manager.exe
