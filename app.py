@@ -1353,6 +1353,18 @@ if __name__ == '__main__':
     PORT = 5066
     HOST = '127.0.0.1'
 
+    # 判断是否有控制台（PyInstaller console=False 时无控制台）
+    HAS_CONSOLE = sys.stdout is not None and hasattr(sys.stdout, 'fileno') and os.isatty(sys.stdout.fileno())
+
+    def safe_print(*args, **kwargs):
+        if HAS_CONSOLE:
+            print(*args, **kwargs)
+
+    def safe_input(prompt=''):
+        if HAS_CONSOLE:
+            return input(prompt)
+        return ''
+
     # 检测端口是否已占用
     def check_port(host, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1361,17 +1373,40 @@ if __name__ == '__main__':
         sock.close()
         return result == 0
 
-    print("\n" + "=" * 50)
-    print("  个人案件管理系统")
-    print("  本地部署 | 数据不上云 | 隐私优先")
-    print("=" * 50)
+    # 尝试结束占用端口的进程（Windows）
+    def kill_port_process(port):
+        try:
+            import subprocess
+            result = subprocess.run(
+                f'netstat -ano | findstr :{port} | findstr LISTENING',
+                shell=True, capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.strip().split('\n'):
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    pid = parts[-1]
+                    subprocess.run(f'taskkill /F /PID {pid}', shell=True,
+                                   capture_output=True, timeout=5)
+        except Exception:
+            pass
+
+    safe_print("\n" + "=" * 50)
+    safe_print("  个人案件管理系统")
+    safe_print("  本地部署 | 数据不上云 | 隐私优先")
+    safe_print("=" * 50)
 
     if check_port(HOST, PORT):
-        print(f"\n  ⚠️  端口 {PORT} 已被占用，可能上次未正常关闭")
-        print(f"  请等待 30 秒后重试，或手动结束占用该端口的进程")
-        print(f"  按 Enter 键退出...")
-        input()
-        sys.exit(1)
+        safe_print(f"\n  ⚠️  端口 {PORT} 已被占用，正在尝试释放...")
+        kill_port_process(PORT)
+        import time
+        time.sleep(1)
+        if check_port(HOST, PORT):
+            safe_print(f"  端口仍被占用，请稍后重试")
+            if HAS_CONSOLE:
+                safe_print(f"  按 Enter 键退出...")
+                safe_input()
+            sys.exit(1)
+        safe_print(f"  端口已释放 ✓")
 
     # 自动打开浏览器
     def open_browser():
@@ -1381,9 +1416,17 @@ if __name__ == '__main__':
             pass
     threading.Timer(1.5, open_browser).start()
 
-    print(f"\n  请在浏览器中访问: http://{HOST}:{PORT}\n")
+    safe_print(f"\n  请在浏览器中访问: http://{HOST}:{PORT}")
+    safe_print(f"  关闭窗口或访问 http://{HOST}:{PORT}/shutdown 停止服务\n")
 
-    # 使用 werkzeug run_simple 支持 socket 选项，允许端口快速复用
+    # 添加远程关闭端点
+    @app.route('/shutdown')
+    def shutdown():
+        import os as _os
+        _os._exit(0)
+        return '服务已停止'
+
+    # 使用 werkzeug run_simple 支持 socket 选项
     try:
         from werkzeug.serving import run_simple
         run_simple(HOST, PORT, app, use_reloader=False, threaded=True)
