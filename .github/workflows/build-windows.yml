@@ -1,0 +1,91 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 v1.2.0）'
+        required: true
+        default: 'v1.2.0'
+  push:
+    branches: [main]
+    paths:
+      - 'app.py'
+      - 'models.py'
+      - 'templates/**'
+      - 'static/**'
+      - 'requirements.txt'
+      - 'law-case-manager-windows.spec'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install flask werkzeug PyPDF2 openpyxl python-docx pyinstaller
+
+      - name: PyInstaller 打包
+        run: |
+          pyinstaller law-case-manager-windows.spec --clean --noconfirm --log-level=WARN
+
+      - name: 验证 EXE
+        run: |
+          if exist "dist\case-manager.exe" (echo ✅ EXE 生成成功) else (echo ❌ 失败 && exit 1)
+          dir dist\case-manager.exe
+
+      - name: 创建发布包
+        shell: cmd
+        run: |
+          mkdir dist\release\data\uploads
+          copy dist\case-manager.exe dist\release\
+          copy USAGE.md dist\release\使用说明.md
+          echo @echo off > dist\release\启动.bat
+          echo start case-manager.exe >> dist\release\启动.bat
+          echo echo 系统已启动，访问 http://127.0.0.1:5066 >> dist\release\启动.bat
+          echo pause >> dist\release\启动.bat
+
+      - name: 打包 ZIP
+        run: powershell Compress-Archive -Path "dist\release\*" -DestinationPath "dist\case-manager-windows.zip"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: case-manager-windows
+          path: dist/case-manager-windows.zip
+          retention-days: 30
+
+      - name: 创建 Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: ${{ github.event.inputs.version }} - Windows 独立 EXE
+          body: |
+            ## 案件管理系统 - Windows 独立 EXE
+
+            无需安装 Python，下载解压后直接运行。
+
+            ### 使用方法
+            1. 下载 case-manager-windows.zip
+            2. 解压到任意位置
+            3. 双击 case-manager.exe，系统自动启动
+            4. 浏览器访问 http://127.0.0.1:5066
+
+            ⚙️ 由 GitHub Actions 自动构建
+          draft: false
+          prerelease: false
+          files: dist/case-manager-windows.zip
