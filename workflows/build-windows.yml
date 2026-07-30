@@ -1,0 +1,120 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 v1.2.0）'
+        required: true
+        default: 'v1.2.0'
+  push:
+    branches: [main]
+    paths:
+      - 'app.py'
+      - 'models.py'
+      - 'templates/**'
+      - 'static/**'
+      - 'requirements.txt'
+      - 'law-case-manager-windows.spec'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install flask werkzeug PyPDF2 openpyxl python-docx pyinstaller
+
+      - name: 清理旧构建
+        run: |
+          if exist "build" rmdir /s /q "build"
+          if exist "dist" rmdir /s /q "dist"
+
+      - name: PyInstaller 打包（单文件模式）
+        run: |
+          pyinstaller law-case-manager-windows.spec --clean --noconfirm --log-level=WARN
+          echo ====================================
+          echo 构建完成，检查输出:
+          dir dist\ /s /b
+          echo ====================================
+
+      - name: 验证 EXE 是否存在
+        run: |
+          if exist "dist\case-manager.exe" (
+            echo ✅ EXE 生成成功
+            dir "dist\case-manager.exe"
+          ) else (
+            echo ❌ 未找到 EXE 文件
+            dir dist\ /s /b
+            exit 1
+          )
+
+      - name: 创建发布目录
+        run: |
+          mkdir dist\release\data\uploads
+          mkdir dist\release\data\backups
+          copy dist\case-manager.exe dist\release\
+          copy USAGE.md dist\release\使用说明.md
+          echo @echo off > dist\release\启动.bat
+          echo title 案件管理系统 >> dist\release\启动.bat
+          echo start case-manager.exe >> dist\release\启动.bat
+          echo echo 系统已启动，请访问 http://127.0.0.1:5066 >> dist\release\启动.bat
+          echo echo 按任意键退出... >> dist\release\启动.bat
+          echo pause >> dist\release\启动.bat
+        shell: cmd
+
+      - name: 打包为 ZIP
+        run: |
+          powershell Compress-Archive -Path "dist\release\*" -DestinationPath "dist\case-manager-windows.zip"
+          echo Zip 文件大小:
+          dir dist\case-manager-windows.zip
+        shell: cmd
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: case-manager-windows
+          path: dist/case-manager-windows.zip
+          retention-days: 30
+
+      - name: 创建 Release 并上传
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: ${{ github.event.inputs.version }} - Windows 独立 EXE
+          body: |
+            ## 📦 Windows 独立 EXE 版本
+
+            无需安装 Python，下载解压后直接运行。
+
+            ### 使用方法
+            1. 下载 `case-manager-windows.zip`
+            2. 解压到任意位置
+            3. 双击 `case-manager.exe`，系统自动启动
+            4. 浏览器访问 http://127.0.0.1:5066
+
+            ### 文件说明
+            - `case-manager.exe` — 主程序（单文件，包含所有依赖）
+            - `启动.bat` — 启动脚本（可选）
+            - `使用说明.md` — 使用帮助
+            - `data/` — 数据存储目录（自动创建）
+
+            ---
+            ⚙️ 由 GitHub Actions 自动构建 | ${{ github.sha }}
+          draft: false
+          prerelease: false
+          files: dist/case-manager-windows.zip
