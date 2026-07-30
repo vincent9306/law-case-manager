@@ -47,9 +47,9 @@
 3. 首次运行可能需要在「系统设置 → 隐私与安全性」中允许
 
 #### Windows
-1. [下载源码](https://github.com/vincent9306/law-case-manager/archive/refs/heads/main.zip) 并解压
-2. 双击 `Windows一键打包.bat` 自动打包
-3. 打包完成后进入 `dist/案件管理系统/`，双击 `启动.bat` 运行
+1. [下载独立 EXE](https://github.com/vincent9306/law-case-manager/releases/download/v1.2.1/case-manager-windows.zip) 并解压
+2. 双击 `case-manager.exe`，浏览器自动打开
+3. 无需安装 Python，后台静默运行，访问 http://127.0.0.1:5066
 
 ### 方式二：源码运行（需要 Python）
 
@@ -159,8 +159,21 @@ rm data/cases.db && python seed.py && python app.py
 
 ## 版本历史
 
+> 完整版本记录见 [CHANGELOG.md](CHANGELOG.md)
+
+### v1.2.1（2026-07-30）
+- **新增** Windows 独立 EXE，后台静默运行，无控制台窗口
+- **新增** `/shutdown` 端点，浏览器一键优雅关闭服务
+- **新增** GitHub Actions 自动构建（PyInstaller --onefile）
+- **修复** 关闭程序后无法重新打开（端口 TIME_WAIT）
+- **修复** 启动时自动检测并释放被旧进程占用的端口
+
+### v1.1.2（2026-07-03）
+- 图文版 Windows 安装指南 PDF（含系统截图）
+- GitHub Actions 自动发布工作流
+
 ### v1.1.1（2026-07-02）
-- 修复 Windows batch 文件编码问题（UTF-8 → GBK），解决乱码和命令错误
+- 修复 Windows batch 文件编码问题��UTF-8 → GBK），解决乱码和命令错误
 - 新增 Windows 用户使用指南（Markdown + PDF）
 - 新增 macOS 用户使用指南（Markdown + PDF）
 - 更新 `install_windows.ps1` 脚本（改进编码处理）
