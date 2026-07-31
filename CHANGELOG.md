@@ -1,5 +1,14 @@
 # 版本历史
 
+## v1.3.0 (2026-07-31)
+
+### 新功能
+- macOS DMG 安装包，拖拽安装体验（.app + /Applications 快捷方式）
+- GitHub Actions 自动构建 macOS DMG（macos-latest + PyInstaller + hdiutil）
+- 同时提供 DMG 和 ZIP 两种格式下载
+
+---
+
 ## v1.2.1 (2026-07-30)
 
 ### 新功能

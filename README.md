@@ -164,6 +164,11 @@ rm data/cases.db && python seed.py && python app.py
 
 > 完整版本记录见 [CHANGELOG.md](CHANGELOG.md)
 
+### v1.3.0（2026-07-31）
+- **新增** macOS DMG 安装包（`.app` + 拖拽安装体验）
+- **新增** GitHub Actions 自动构建 macOS DMG（PyInstaller + hdiutil）
+- **新增** DMG 内嵌 /Applications 快捷方式，拖拽即装
+
 ### v1.2.1（2026-07-30）
 - **新增** Windows 独立 EXE，后台静默运行，无控制台窗口
 - **新增** `/shutdown` 端点，浏览器一键优雅关闭服务
