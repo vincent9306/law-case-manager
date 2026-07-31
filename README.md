@@ -42,7 +42,7 @@
 ### 方式一：独立可执行文件（推荐，无需安装 Python）
 
 #### Mac
-1. [下载 DMG 安装包](https://github.com/vincent9306/law-case-manager/releases/latest)（`case-manager-macos.dmg`）
+1. [下载 DMG 安装包](https://github.com/vincent9306/law-case-manager/releases/download/v1.3.1/case-manager-macos.dmg)（`case-manager-macos.dmg`）
 2. 双击打开 DMG，将 `case-manager.app` 拖入 Applications 文件夹
 3. 从启动台或 Applications 中双击运行
 4. 首次运行如提示"无法验证开发者"：
@@ -163,6 +163,11 @@ rm data/cases.db && python seed.py && python app.py
 ## 版本历史
 
 > 完整版本记录见 [CHANGELOG.md](CHANGELOG.md)
+
+### v1.3.1（2026-07-31）
+- **修复** macOS APP「不支持此应用程序」错误（v1.3.0 为 arm64 架构，Intel Mac 无法运行）
+- 改用 `arch -x86_64` 交叉编译，生成 x86_64 架构 APP
+- 兼容 Intel Mac（原生运行）和 Apple Silicon Mac（通过 Rosetta 2）
 
 ### v1.3.0（2026-07-31）
 - **新增** macOS DMG 安装包（`.app` + 拖拽安装体验）

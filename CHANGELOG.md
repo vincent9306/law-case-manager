@@ -1,5 +1,14 @@
 # 版本历史
 
+## v1.3.1 (2026-07-31)
+
+### 问题修复
+- 修复 macOS APP「不支持此应用程序」错误（v1.3.0 为 arm64 架构，Intel Mac 无法运行）
+- 改用 `macos-latest` + `arch -x86_64` 交叉编译，生成 x86_64 架构 APP
+- 兼容 Intel Mac（原生运行）和 Apple Silicon Mac（通过 Rosetta 2）
+
+---
+
 ## v1.3.0 (2026-07-31)
 
 ### 新功能
