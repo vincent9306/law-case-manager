@@ -42,9 +42,12 @@
 ### 方式一：独立可执行文件（推荐，无需安装 Python）
 
 #### Mac
-1. [下载 `case-manager-macOS.zip`](https://github.com/vincent9306/law-case-manager/releases/download/v1.1.0/case-manager-macOS.zip) 并解压
-2. 双击 `启动.command` 即可运行
-3. 首次运行可能需要在「系统设置 → 隐私与安全性」中允许
+1. [下载 DMG 安装包](https://github.com/vincent9306/law-case-manager/releases/latest)（`case-manager-macos.dmg`）
+2. 双击打开 DMG，将 `case-manager.app` 拖入 Applications 文件夹
+3. 从启动台或 Applications 中双击运行
+4. 首次运行如提示"无法验证开发者"：
+   - 打开「系统设置」→「隐私与安全性」→ 点击「仍要打开」
+   - 或在终端执行：`xattr -cr /Applications/case-manager.app`
 
 #### Windows
 1. [下载独立 EXE](https://github.com/vincent9306/law-case-manager/releases/download/v1.2.1/case-manager-windows.zip) 并解压

@@ -1,0 +1,148 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 v1.3.0）'
+        required: true
+        default: 'v1.3.0'
+  push:
+    branches: [main]
+    paths:
+      - 'app.py'
+      - 'models.py'
+      - 'templates/**'
+      - 'static/**'
+      - 'requirements.txt'
+      - 'law-case-manager-macos.spec'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install flask werkzeug PyPDF2 openpyxl python-docx pyinstaller
+
+      - name: PyInstaller 打包
+        run: |
+          pyinstaller law-case-manager-macos.spec --clean --noconfirm --log-level=INFO
+
+      - name: 验证 APP
+        run: |
+          if [ -d "dist/case-manager.app" ]; then
+            echo "✅ APP 打包成功"
+            ls -la dist/case-manager.app/Contents/MacOS/
+          else
+            echo "❌ APP 打包失败"
+            exit 1
+          fi
+
+      - name: 创建 DMG 发布包
+        run: |
+          # 创建暂存目录
+          STAGING="dist/dmg_staging"
+          mkdir -p "$STAGING"
+
+          # 复制 .app
+          cp -R "dist/case-manager.app" "$STAGING/"
+
+          # 创建指向 /Applications 的快捷方式（拖拽安装体验）
+          ln -s /Applications "$STAGING/Applications"
+
+          # 创建使用说明
+          cat > "$STAGING/使用说明.txt" << 'EOF'
+          案件管理系统 - macOS 版
+
+          === 安装方法 ===
+          将 case-manager.app 拖入 Applications 文件夹即可。
+
+          === 首次运行 ===
+          首次打开时 macOS 可能会提示"无法验证开发者"。
+          请按以下步骤操��：
+          1. 打开"系统设置" → "隐私与安全性"
+          2. 找到"case-manager.app"并点击"仍要打开"
+          3. 或在终端执行：
+             xattr -cr /Applications/case-manager.app
+
+          === 使用方法 ===
+          双击 case-manager.app 启动系统，
+          浏览器自动打开 http://127.0.0.1:5066。
+
+          关闭方式：
+          - 菜单栏退出：点击 Dock 栏图标右键 → 退出
+          - 浏览器访问：http://127.0.0.1:5066/shutdown
+
+          所有数据存储在本地，不上传云端，隐私安全。
+          EOF
+
+          # 创建 DMG
+          DMG_NAME="case-manager-macos"
+          hdiutil create -volname "案件管理系统" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            "dist/${DMG_NAME}.dmg"
+
+          echo "✅ DMG 创建成功"
+          ls -lh "dist/${DMG_NAME}.dmg"
+
+      - name: 打包 ZIP（备用）
+        run: |
+          cd dist
+          zip -r case-manager-macos.zip case-manager.app
+          ls -lh case-manager-macos.zip
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: case-manager-macos
+          path: |
+            dist/case-manager-macos.dmg
+            dist/case-manager-macos.zip
+          retention-days: 30
+
+      - name: 创建 Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: ${{ github.event.inputs.version }} - macOS DMG
+          body: |
+            ## 案件管理系统 - macOS DMG
+
+            无需安装 Python，下载 DMG 拖入 Applications 即可使用。
+
+            ### 安装方法
+            1. 下载 case-manager-macos.dmg
+            2. 双击打开 DMG
+            3. 将 case-manager.app 拖入 Applications 文件夹
+            4. 从启动台或 Applications 中双击运行
+
+            ### 首次运行
+            如果 macOS 提示"无法验证开发者"���
+            - 打开"系统设置" → "隐私与安全性" → 点击"仍要打开"
+            - 或在终端执行：`xattr -cr /Applications/case-manager.app`
+
+            ### 使用方法
+            启动后浏览器访问 http://127.0.0.1:5066
+
+            ⚙️ 由 GitHub Actions 自动构建
+          draft: false
+          prerelease: false
+          files: |
+            dist/case-manager-macos.dmg
+            dist/case-manager-macos.zip
