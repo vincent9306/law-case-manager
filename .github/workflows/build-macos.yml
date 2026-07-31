@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号（如 v1.3.0）'
+        description: '版本号（如 v1.3.1）'
         required: true
-        default: 'v1.3.0'
+        default: 'v1.3.1'
   push:
     branches: [main]
     paths:
@@ -22,7 +22,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # macos-13 是 Intel (x86_64) runner，生成的 APP 可在 Intel Mac 原生运行，
+    # 也可在 Apple Silicon Mac 上通过 Rosetta 2 运行，兼容性最好。
+    runs-on: macos-13
 
     steps:
       - name: 检出代码
@@ -46,6 +48,7 @@ jobs:
         run: |
           if [ -d "dist/case-manager.app" ]; then
             echo "✅ APP 打包成功"
+            file dist/case-manager.app/Contents/MacOS/case-manager
             ls -la dist/case-manager.app/Contents/MacOS/
           else
             echo "❌ APP 打包失败"
@@ -126,6 +129,11 @@ jobs:
 
             无需安装 Python，下载 DMG 拖入 Applications 即可使用。
 
+            ### 兼容性
+            本版本为 **x86_64 架构**，支持：
+            - Intel Mac（原生运行）
+            - Apple Silicon Mac（首次运行会提示安装 Rosetta 2）
+
             ### 安装方法
             1. 下载 case-manager-macos.dmg
             2. 双击打开 DMG
@@ -133,7 +141,7 @@ jobs:
             4. 从启动台或 Applications 中双击运行
 
             ### 首次运行
-            如果 macOS 提示"无法验证开发者"���
+            如果 macOS 提示"无法验证开发者"：
             - 打开"系统设置" → "隐私与安全性" → 点击"仍要打开"
             - 或在终端执行：`xattr -cr /Applications/case-manager.app`
 
